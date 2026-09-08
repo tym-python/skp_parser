@@ -1,0 +1,89 @@
+"""DOCX 解析器:按"表格优先、段落兜底"两条路径解析:
+
+- **有表格**:通知/计划文件的项目清单在表格中——表格(可多张)逐张走公共
+  `extract_rows_from_table`(与 xlsx/pdf 共用 装饰行/窄化分组/性质标题/分类上下文);
+  表格前的通知正文、标题段落不参与解析(避免标题/导语被当项目或拼入项目名),
+  表格后的落款/说明同样忽略。
+- **无表格**:纯文本清单(段落式 序号行/分类行/条目)→ 全部段落走公共
+  `parse_lines`(装饰行/概况句/备注 过滤已内置)。
+
+内容读取走共享 docx_reader(损坏包自动 lxml 兜底)。python-docx 特有处理:
+- 合并单元格文本会**跨列重复**(如 分类行 "一、基础设施" 出现于两列)→ 相邻去重,
+  否则双份文本拼进 joined 会污染分类名("基础设施 一、基础设施");
+- 单元格文本统一走 text_clean 清洗管道(去空白/全角转半角/折叠)。
+
+通知类文件(docx)的元信息(标题/文号/发文单位/正文)由 NoticeParser 解析入库
+(skp_notice),本类只负责其中的项目清单部分。
+"""
+
+from typing import Any, Dict, List, Optional
+
+from parser.base_parser import BaseParser
+from parser.docx_reader import iter_blocks
+from parser.field_mapping import extract_file_year
+from parser.text_clean import clean_text
+from util.log_util import get_logger
+
+logger = get_logger(__file__)
+
+
+class DocxParser(BaseParser):
+    """DOCX 重点清单解析:表格优先;纯文本清单走段落兜底。"""
+
+    SUPPORTED_EXT = ('.docx',)
+
+    # ---------- 清洗 ----------
+
+    @staticmethod
+    def _dedupe_row_cells(cells: List[str]) -> List[str]:
+        """python-docx 合并单元格跨列去重:同一文本在相邻多列重复 → 保留首格。
+
+        例:分类行 ["一、基础设施", "一、基础设施"] → ["一、基础设施", ""],
+        否则 joined="一、基础设施 一、基础设施" 会被当作分类名整体入库。
+        """
+        out: List[str] = []
+        prev = ''
+        for c in cells:
+            t = str(c).strip()
+            out.append('' if t and t == prev else t)
+            if t:
+                prev = t
+        return out
+
+    @staticmethod
+    def _clean_row(row: List[Any]) -> List[Any]:
+        """单行清洗管道:clean_text 统一清洗 + 合并单元格相邻去重。"""
+        return DocxParser._dedupe_row_cells([clean_text(c) for c in row])
+
+    # ---------- 解析 ----------
+
+    def parse(self, file_path: str) -> List[Dict[str, Any]]:
+        self.file_year = extract_file_year(file_path)
+        projects: List[Dict[str, Any]] = []
+        context: Dict[str, str] = {}  # 分类上下文在表格间共享
+        prev_header: Optional[Dict[int, str]] = None
+        paragraph_lines: List[str] = []
+
+        for kind, payload in iter_blocks(file_path):
+            if kind == 'tbl':
+                # 表格 = 项目清单主体:表前通知正文/标题段落、表后落款说明一律
+                # 不参与解析(见类注释),段落路径仅保留"整文档无表格"的纯文本清单
+                rows = [self._clean_row(row) for row in payload]
+                page_projects, prev_header = self.extract_rows_from_table(
+                    rows, context, file_year=self.file_year,
+                    prev_header_map=prev_header)
+                projects.extend(page_projects)
+            else:
+                # 表格前的段落(标题/通知导语/概况句)——仅在尚未出现表格时收集,
+                # 供"无表格纯文本清单"走段落兜底;有表格时表后段落不再收集
+                if not projects and not prev_header:
+                    text = clean_text(payload)
+                    if text:
+                        paragraph_lines.append(text)
+
+        if not projects and paragraph_lines:
+            # 整文档无表格 → 纯文本清单:全部段落走行级兜底(bare:段落式逐行项目
+            # 条目,如 甘肃 名单 "续建项目：…（一）农业水利项目 → 项目名" 逐行)
+            projects.extend(self.parse_lines(paragraph_lines, context, bare=True))
+
+        return self.filter_blank_projects(projects)

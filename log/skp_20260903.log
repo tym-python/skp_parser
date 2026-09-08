@@ -1,0 +1,637 @@
+2026-09-03 08:36:56,275 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\德阳市2025年\2025年德阳市重点项目名单（新开工）.xlsx(上传 GoFast: False)
+2026-09-03 08:36:56,365 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 08:36:56,667 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 08:36:57,297 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 209 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 08:36:59,274 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年德阳市重点项目名单（新开工）.xlsx (file_id=1484, 项目 203 条)
+2026-09-03 08:36:59,274 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 08:40:47,296 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\德阳市2025年\2025年德阳市重点项目名单（新开工）.xlsx(上传 GoFast: False)
+2026-09-03 08:40:47,303 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 08:40:47,494 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 08:40:47,727 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 203 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 08:40:50,579 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年德阳市重点项目名单（新开工）.xlsx (file_id=1485, 项目 202 条)
+2026-09-03 08:40:50,579 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 08:41:03,704 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\德阳市2025年\2025年德阳市重点项目名单（续建）.xlsx(上传 GoFast: False)
+2026-09-03 08:41:03,729 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 08:41:03,864 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 08:41:04,050 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 277 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 08:41:05,842 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年德阳市重点项目名单（续建）.xlsx (file_id=1486, 项目 270 条)
+2026-09-03 08:41:05,842 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 08:41:40,434 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\甘孜州2025年\2025年甘孜州重点项目名单.xlsx(上传 GoFast: False)
+2026-09-03 08:41:40,461 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 08:41:40,592 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 08:41:40,751 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 364 条, 特有信息 360 条, 通知 0 条, 分类声明 0 条
+2026-09-03 08:41:52,423 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年甘孜州重点项目名单.xlsx (file_id=1487, 项目 357 条)
+2026-09-03 08:41:52,423 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:10:11,810 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\甘孜州2025年\2025年甘孜州重点项目名单.xlsx(上传 GoFast: False)
+2026-09-03 09:10:11,820 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:10:12,053 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:10:12,069 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:10:23,098 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年甘孜州重点项目名单.xlsx (file_id=1488, 项目 357 条)
+2026-09-03 09:10:23,098 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:13:09,448 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\甘孜州2025年\2025年甘孜州重点项目名单.xlsx(上传 GoFast: False)
+2026-09-03 09:13:09,458 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:13:09,631 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:13:09,651 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:13:20,717 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年甘孜州重点项目名单.xlsx (file_id=1489, 项目 357 条)
+2026-09-03 09:13:20,718 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:13:50,193 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\甘孜州2025年\2025年甘孜州重点项目名单.xlsx(上传 GoFast: False)
+2026-09-03 09:13:50,205 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:13:50,330 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:13:50,330 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:14:00,424 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2025年甘孜州重点项目名单.xlsx (file_id=1490, 项目 357 条)
+2026-09-03 09:14:00,424 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:18:48,657 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 09:18:48,682 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:18:48,814 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:18:49,035 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 463 条, 特有信息 28 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:18:49,432 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 09:18:49,433 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 09:18:52,071 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 泸州市2025年重点项目表.xlsx (file_id=1491, 项目 464 条)
+2026-09-03 09:18:52,071 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:23:53,236 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 09:23:53,244 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:23:53,415 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:23:53,951 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:24:05,257 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 09:24:05,277 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:24:05,419 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:24:05,420 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:36:59,797 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 09:37:01,109 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 09:39:18,993 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 泸州市2025年重点项目表.xlsx (file_id=1492, 项目 464 条)
+2026-09-03 09:39:18,995 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:40:35,373 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 09:40:35,392 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:40:35,591 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:40:35,771 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 464 条, 特有信息 28 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:41:01,525 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 09:41:05,796 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 09:41:20,783 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 泸州市2025年重点项目表.xlsx (file_id=1493, 项目 464 条)
+2026-09-03 09:41:20,783 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 09:43:39,178 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 09:43:39,202 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 09:43:39,440 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 09:43:40,306 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 464 条, 特有信息 28 条, 通知 0 条, 分类声明 0 条
+2026-09-03 09:49:23,814 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 09:49:23,815 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 10:30:40,024 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,035 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,037 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,038 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,041 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,043 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,048 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 10:30:40,048 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 10:30:40,100 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,101 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:40,103 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:57,687 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2020年重点项目\2020年各省市重点项目清单汇总：51.63万亿\07宁夏古自治区2020年重点项目清单\2020年宁夏自治区重点项目投资计划.xlsx[2020年重点前期]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:57,737 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 10:30:58,058 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,132 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,133 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,134 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,134 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,136 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,137 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 10:30:58,137 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 10:30:58,162 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,163 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,163 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:30:58,497 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 10:30:58,558 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 10:31:18,211 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 10:31:18,508 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 10:32:05,932 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 10:32:31,703 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 10:32:32,087 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,095 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,096 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,097 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,098 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,099 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,099 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 10:32:32,101 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 10:32:32,125 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,125 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:32:32,126 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:55,551 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx(上传 GoFast: False)
+2026-09-03 10:37:55,560 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 10:37:55,797 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 10:37:55,815 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 10:37:56,175 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,183 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,184 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,185 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,186 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,187 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,192 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 10:37:56,192 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 10:37:56,219 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,219 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:56,220 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 10:37:57,656 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 泸州市2025年重点项目表.xlsx (file_id=1494, 项目 449 条)
+2026-09-03 10:37:57,657 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 10:40:13,881 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx(上传 GoFast: False)
+2026-09-03 10:40:13,897 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 10:40:14,311 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 10:40:14,638 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 129 条, 特有信息 129 条, 通知 0 条, 分类声明 0 条
+2026-09-03 10:40:17,522 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx (file_id=1495, 项目 130 条)
+2026-09-03 10:40:17,522 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 10:41:37,962 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx(上传 GoFast: False)
+2026-09-03 10:41:37,980 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 10:41:38,130 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 10:41:38,286 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 130 条, 特有信息 130 条, 通知 0 条, 分类声明 0 条
+2026-09-03 10:42:15,055 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx(上传 GoFast: False)
+2026-09-03 10:42:15,073 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 10:42:15,189 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 10:42:15,191 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 10:44:06,361 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx(上传 GoFast: False)
+2026-09-03 10:44:06,379 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 10:44:06,568 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 10:44:06,587 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:18:48,222 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx(上传 GoFast: False)
+2026-09-03 11:18:48,229 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:18:48,410 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:18:48,411 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:18:48,798 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx (file_id=1496, 项目 130 条)
+2026-09-03 11:18:48,798 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 11:21:25,944 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\05广西自治区2021年重点项目清单\1：2021年广西第一批（调整后）\附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx(上传 GoFast: False)
+2026-09-03 11:21:25,954 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:21:26,147 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:21:26,162 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:21:26,687 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 自治区教育厅: 标题声明 9 项,解析 0 项
+2026-09-03 11:21:26,687 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 自然资源厅: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,687 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 卫生健康委: 标题声明 2 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 农业农村厅: 标题声明 2 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 市场监管局: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 林业局: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 体育局: 标题声明 2 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 粮食和物资储备局: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 中马钦州产业园区管委会: 标题声明 7 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 广西投资集团有限公司: 标题声明 2 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 广西文化产业集团有限公司: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 广西中烟工业有限责任公司: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 中国—东盟信息港股份有限公司: 标题声明 3 项,解析 0 项
+2026-09-03 11:21:26,688 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 住房和城乡建设厅: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,689 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 交通运输厅: 标题声明 60 项,解析 0 项
+2026-09-03 11:21:26,690 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 自治区糖业办: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,690 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 自治区水利厅: 标题声明 1 项,解析 0 项
+2026-09-03 11:21:26,690 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx] 广播电视局: 标题声明 1 项,解析 14 项
+2026-09-03 11:21:35,305 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件2 2021年第一批自治区层面统筹推进重大项目（续建）进度目标责任表（调整后）.xlsx (file_id=1497, 项目 1260 条)
+2026-09-03 11:21:35,305 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 11:22:23,277 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 11:22:23,288 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:22:23,497 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:22:27,372 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4587 条, 特有信息 3742 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:23:06,188 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1498, 项目 4532 条)
+2026-09-03 11:23:06,188 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 11:31:25,223 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 11:31:25,244 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:31:25,551 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:31:28,357 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4532 条, 特有信息 3746 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:36:38,212 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1499, 项目 4532 条)
+2026-09-03 11:36:38,213 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 11:37:39,774 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 11:37:39,782 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:37:39,970 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:37:45,018 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4532 条, 特有信息 3746 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:38:23,542 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1500, 项目 4532 条)
+2026-09-03 11:38:23,542 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 11:39:36,159 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 11:39:36,180 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:39:36,356 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:39:42,087 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4532 条, 特有信息 3746 条, 通知 0 条, 分类声明 0 条
+2026-09-03 11:40:37,419 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 11:40:37,439 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 11:40:37,707 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 11:40:37,733 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 13:47:08,658 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 13:47:08,667 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 13:47:08,882 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 13:47:08,907 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 13:47:22,046 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1501, 项目 4532 条)
+2026-09-03 13:47:22,046 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 13:56:35,586 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 13:56:35,605 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 13:56:35,891 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 13:56:43,011 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4532 条, 特有信息 3746 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:13:44,417 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:13:44,438 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:13:44,671 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:13:44,688 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:18:24,300 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:18:24,319 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:18:24,453 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:18:24,454 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:20:11,457 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:20:11,477 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:20:11,596 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:20:11,597 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:39:01,950 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:39:01,971 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:39:02,080 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:39:02,081 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:41:44,150 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:41:44,160 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:41:44,289 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:41:44,289 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 14:42:01,280 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1502, 项目 4532 条)
+2026-09-03 14:42:01,280 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 14:44:38,895 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 14:44:38,916 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 14:44:39,153 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 14:44:43,104 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4532 条, 特有信息 3095 条, 通知 0 条, 分类声明 0 条
+2026-09-03 15:08:03,242 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 15:08:03,263 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 15:08:03,465 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 15:08:03,488 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 15:40:49,247 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:40:49,673 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:41:09,992 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:41:57,128 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:42:42,221 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:42:42,490 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:43:01,442 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:45:07,657 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:45:41,919 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:45:53,684 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,065 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,074 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,077 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,079 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,081 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,084 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,096 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:46:07,098 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:46:07,130 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,131 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:07,132 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:18,489 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:28,850 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,626 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,638 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,640 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,640 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,642 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,643 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,647 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:46:42,648 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:46:42,679 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,680 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:46:42,681 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,567 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:47:22,986 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,994 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,996 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,997 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,998 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:22,998 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:23,000 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:47:23,001 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:47:23,025 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:23,026 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:23,027 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:47:23,313 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:47:23,345 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:47:42,489 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:47:42,788 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:48:31,442 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:49:17,101 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:49:17,520 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,529 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,530 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,531 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,532 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,533 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,534 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:49:17,534 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:49:17,560 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,561 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,562 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:49:17,863 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:49:17,904 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:49:36,608 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:49:36,908 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:50:43,760 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:50:44,166 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,174 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,175 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,176 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,177 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,178 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,179 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:50:44,179 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:50:44,203 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,204 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,205 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:50:44,490 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:50:44,521 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:51:03,269 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:51:03,582 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:52:04,253 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:52:04,297 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:52:23,394 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:52:23,690 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:53:10,351 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:53:30,893 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:53:54,668 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:54:11,860 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:54:34,712 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:54:46,601 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:55:12,744 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:55:34,737 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 15:55:35,142 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,151 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,152 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,153 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,154 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,155 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,156 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 15:55:35,157 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 15:55:35,181 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,182 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,183 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 15:55:35,526 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:55:35,565 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 15:55:55,354 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:55:55,672 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:56:43,277 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:57:21,952 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 15:57:22,291 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 15:58:10,259 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 16:00:58,279 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 16:00:58,309 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:00:58,484 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:00:58,485 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:01:10,200 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1503, 项目 4514 条)
+2026-09-03 16:01:10,201 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:10:42,908 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\垫江县2025年\重庆市垫江县2025年重点建设项目清单.xlsx(上传 GoFast: False)
+2026-09-03 16:10:42,915 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:10:43,202 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:10:43,552 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 180 条, 特有信息 180 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:10:46,911 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 重庆市垫江县2025年重点建设项目清单.xlsx (file_id=1504, 项目 180 条)
+2026-09-03 16:10:46,913 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:12:57,646 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\30云南省2023年重点项目清单\2023年昆明市\附件4.2023年市级“重中之重”项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 16:12:57,666 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:12:57,837 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:12:58,341 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 111 条, 特有信息 110 条, 通知 0 条, 分类声明 26 条
+2026-09-03 16:13:48,811 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\30云南省2023年重点项目清单\2023年昆明市\附件4.2023年市级“重中之重”项目计划表.xlsx[Sheet2]: 前 20 行未找到表头,跳过
+2026-09-03 16:14:01,615 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件4.2023年市级“重中之重”项目计划表.xlsx (file_id=1505, 项目 111 条)
+2026-09-03 16:14:01,616 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:14:56,478 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\垫江县2025年\重庆市垫江县2025年重点建设项目清单.xlsx(上传 GoFast: False)
+2026-09-03 16:14:56,496 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:14:56,611 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:14:56,845 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 180 条, 特有信息 180 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:15:59,754 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 重庆市垫江县2025年重点建设项目清单.xlsx (file_id=1506, 项目 180 条)
+2026-09-03 16:15:59,756 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:17:50,204 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\垫江县2025年\重庆市垫江县2025年重点建设项目清单.xlsx(上传 GoFast: False)
+2026-09-03 16:17:50,224 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:17:50,444 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:17:50,717 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 180 条, 特有信息 180 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:27:46,453 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 16:27:46,474 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:27:46,695 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:27:53,358 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4514 条, 特有信息 3087 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:29:44,433 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 16:29:44,442 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:29:44,616 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:29:44,638 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:29:56,244 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1507, 项目 4420 条)
+2026-09-03 16:29:56,244 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:38:54,433 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2021年重点项目\13广东省2021年重点项目清单\广东省2021年重点项目计划表.xlsx(上传 GoFast: False)
+2026-09-03 16:38:54,443 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:38:54,773 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:38:57,886 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 4420 条, 特有信息 3008 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:39:30,963 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 广东省2021年重点项目计划表.xlsx (file_id=1508, 项目 4414 条)
+2026-09-03 16:39:30,963 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:43:26,167 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 16:43:26,588 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,597 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,599 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,599 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,600 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,601 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,602 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 16:43:26,603 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 16:43:26,629 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,629 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,630 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 16:43:26,996 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 16:43:27,029 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 16:43:46,740 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 16:43:47,056 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 16:44:35,180 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 16:45:11,233 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 16:45:11,551 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 16:45:58,899 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 16:48:53,189 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 16:48:53,220 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:48:53,421 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:48:54,369 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 240 条, 特有信息 220 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:48:57,239 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2024年合川区重大建设项目名单.xlsx (file_id=1509, 项目 229 条)
+2026-09-03 16:48:57,240 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 16:52:46,343 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 16:52:46,361 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:52:46,541 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:52:47,020 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 229 条, 特有信息 220 条, 通知 0 条, 分类声明 0 条
+2026-09-03 16:56:28,231 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 16:56:28,260 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 16:56:28,740 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 16:56:28,768 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:09:45,900 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 17:09:45,909 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:09:46,048 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:09:46,050 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:09:48,254 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2024年合川区重大建设项目名单.xlsx (file_id=1510, 项目 229 条)
+2026-09-03 17:09:48,254 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:18:16,838 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 17:18:16,845 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:18:17,009 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:18:17,259 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 229 条, 特有信息 220 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:18:21,090 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2024年合川区重大建设项目名单.xlsx (file_id=1511, 项目 222 条)
+2026-09-03 17:18:21,090 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:19:22,339 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 17:19:22,358 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:19:22,511 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:19:22,616 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 222 条, 特有信息 220 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:24:10,409 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 17:24:10,417 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:24:10,607 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:24:10,624 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:24:12,733 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2024年合川区重大建设项目名单.xlsx (file_id=1512, 项目 222 条)
+2026-09-03 17:24:12,734 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:24:51,594 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\04重庆市2024年重点项目清单\合川区2024年\2024年合川区重大建设项目名单.xlsx(上传 GoFast: False)
+2026-09-03 17:24:51,602 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:24:51,743 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:24:52,078 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 222 条, 特有信息 220 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:24:55,546 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 2024年合川区重大建设项目名单.xlsx (file_id=1513, 项目 222 条)
+2026-09-03 17:24:55,546 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:30:36,449 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\04重庆市2026年重点项目清单\2026年垫江县\重庆市垫江县2026年重点建设项目清单.xlsx(上传 GoFast: False)
+2026-09-03 17:30:36,468 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:30:36,673 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:30:37,107 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 214 条, 特有信息 199 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:30:39,850 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 重庆市垫江县2026年重点建设项目清单.xlsx (file_id=1514, 项目 200 条)
+2026-09-03 17:30:39,850 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:31:18,332 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\垫江县2025年\重庆市垫江县2025年重点前期项目清单.xlsx(上传 GoFast: False)
+2026-09-03 17:31:18,340 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:31:18,476 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:31:18,726 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 177 条, 特有信息 160 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:31:20,443 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 重庆市垫江县2025年重点前期项目清单.xlsx (file_id=1515, 项目 173 条)
+2026-09-03 17:31:20,443 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:32:20,156 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:32:20,185 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:32:20,388 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:32:21,562 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 954 条, 特有信息 954 条, 通知 0 条, 分类声明 58 条
+2026-09-03 17:32:22,002 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 17:32:22,046 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 海棠新城开发区: 标题声明 24 项,解析 3 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足石刻研究院: 标题声明 41 项,解析 11 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区教委: 标题声明 16 项,解析 5 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区公安局: 标题声明 11 项,解析 5 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区民政局: 标题声明 3 项,解析 0 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区生态环境局: 标题声明 21 项,解析 8 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区住房城乡建委: 标题声明 67 项,解析 22 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区交通运输委: 标题声明 27 项,解析 8 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区水利局: 标题声明 58 项,解析 24 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区农业农村委: 标题声明 22 项,解析 9 项
+2026-09-03 17:32:22,201 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区卫生健康委: 标题声明 27 项,解析 7 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区商务委: 标题声明 6 项,解析 1 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区退役军人事务局: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区规划自然资源局: 标题声明 8 项,解析 3 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区林业局: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区城市管理局: 标题声明 6 项,解析 5 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 棠香街道: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 龙岗街道: 标题声明 3 项,解析 0 项
+2026-09-03 17:32:22,202 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 雍溪镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 宝顶镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 建设局: 标题声明 52 项,解析 16 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 经开区各镇街: 标题声明 36 项,解析 11 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 经开区生态环境局: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 其他策划项目: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团: 标题声明 64 项,解析 37 项
+2026-09-03 17:32:22,205 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-高科本部: 标题声明 13 项,解析 0 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-永晟公司: 标题声明 20 项,解析 8 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-开建公司: 标题声明 30 项,解析 9 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-园区公司: 标题声明 10 项,解析 4 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团: 标题声明 61 项,解析 19 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团: 标题声明 62 项,解析 13 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-文旅集团: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-旅游集团: 标题声明 23 项,解析 10 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-鑫发集团: 标题声明 8 项,解析 3 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-龙水湖公司: 标题声明 7 项,解析 0 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 新双圈公司: 标题声明 52 项,解析 10 项
+2026-09-03 17:32:22,206 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区经济信息委: 标题声明 10 项,解析 5 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区: 标题声明 200 项,解析 80 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-龙水园: 标题声明 22 项,解析 9 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-万古园: 标题声明 21 项,解析 9 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-三驱园: 标题声明 7 项,解析 0 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 金山镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 双桥园区: 标题声明 35 项,解析 14 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 邮亭产发中心: 标题声明 32 项,解析 11 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区龙水湖旅游度假区发展中心: 标题声明 22 项,解析 14 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-集团本部: 标题声明 20 项,解析 15 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团-发展集团: 标题声明 3 项,解析 0 项
+2026-09-03 17:32:22,207 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团-开创集团: 标题声明 17 项,解析 0 项
+2026-09-03 17:32:22,208 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-旅业公司: 标题声明 11 项,解析 0 项
+2026-09-03 17:32:22,208 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-鑫发公司: 标题声明 6 项,解析 0 项
+2026-09-03 17:32:22,208 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-足锶集团: 标题声明 3 项,解析 0 项
+2026-09-03 17:32:29,230 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件 大足区2025年度项目“三张清单”（删减）.xlsx (file_id=1516, 项目 954 条)
+2026-09-03 17:32:29,230 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:35:47,142 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:35:47,159 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:35:47,347 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:35:47,956 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 954 条, 特有信息 954 条, 通知 0 条, 分类声明 55 条
+2026-09-03 17:42:08,372 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:42:08,389 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:42:08,618 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:42:08,642 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:43:48,147 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件 大足区2025年度项目“三张清单”（删减）.xlsx (file_id=1517, 项目 0 条)
+2026-09-03 17:43:48,149 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
+2026-09-03 17:44:00,165 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:44:00,185 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:44:00,298 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:44:00,488 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 1 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:47:10,284 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:47:10,307 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:47:12,063 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:47:12,137 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:56:10,105 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 0 → 1
+2026-09-03 17:56:10,708 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分政企投资汇总表  (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,716 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分单位分政企投资汇总表  (2)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,718 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[分行业类别汇总表 (全对比)]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,719 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,719 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,721 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[政府投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,722 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[封面 ]: 前 20 行未找到表头,跳过
+2026-09-03 17:56:10,722 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[描述]: 前 20 行未找到表头,跳过
+2026-09-03 17:56:10,748 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资在建单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,748 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资开工单位汇总 ]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:10,749 - E:\STangWork\PythonProjects\skp_parser\parser\xlsx_parser.py - WARNING - E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\泸州市2025年\泸州市2025年重点项目表.xlsx[企业投资前期单位汇总]: 判定为统计汇总表(无项目),已跳过并记录名单
+2026-09-03 17:56:11,047 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 17:56:11,079 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 17:56:34,878 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 3 → 4
+2026-09-03 17:56:35,207 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 1 → 2
+2026-09-03 17:57:42,375 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 17:57:42,434 - E:\STangWork\PythonProjects\skp_parser\parser\base_parser.py - INFO - 合并表头修正: project_name 列 2 → 3
+2026-09-03 17:59:41,775 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 单文件处理: E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\大足区2025年\附件 大足区2025年度项目“三张清单”（删减）.xlsx(上传 GoFast: False)
+2026-09-03 17:59:41,786 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已创建: 127.0.0.1:3306/suidaobig
+2026-09-03 17:59:41,909 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)
+2026-09-03 17:59:41,909 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - 删除旧数据: 文件 0 条, 项目 0 条, 特有信息 0 条, 通知 0 条, 分类声明 0 条
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 海棠新城开发区: 标题声明 24 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足石刻研究院: 标题声明 41 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区教委: 标题声明 16 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区公安局: 标题声明 11 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区民政局: 标题声明 3 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区生态环境局: 标题声明 21 项,解析 0 项
+2026-09-03 17:59:42,574 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区住房城乡建委: 标题声明 67 项,解析 1 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区交通运输委: 标题声明 27 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区水利局: 标题声明 58 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区农业农村委: 标题声明 22 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区卫生健康委: 标题声明 27 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区商务委: 标题声明 6 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区退役军人事务局: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区规划自然资源局: 标题声明 8 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区林业局: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区城市管理局: 标题声明 6 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 棠香街道: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 龙岗街道: 标题声明 3 项,解析 0 项
+2026-09-03 17:59:42,575 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 雍溪镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 宝顶镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 建设局: 标题声明 52 项,解析 1 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 经开区各镇街: 标题声明 36 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 经开区生态环境局: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 其他策划项目: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团: 标题声明 64 项,解析 0 项
+2026-09-03 17:59:42,579 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-高科本部: 标题声明 13 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-永晟公司: 标题声明 20 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-开建公司: 标题声明 30 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-园区公司: 标题声明 10 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团: 标题声明 61 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团: 标题声明 62 项,解析 1 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-文旅集团: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-旅游集团: 标题声明 23 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-鑫发集团: 标题声明 8 项,解析 1 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-龙水湖公司: 标题声明 7 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 新双圈公司: 标题声明 52 项,解析 0 项
+2026-09-03 17:59:42,580 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区经济信息委: 标题声明 10 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区: 标题声明 200 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-龙水园: 标题声明 22 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-万古园: 标题声明 21 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 大足高新区-三驱园: 标题声明 7 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 金山镇: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 双桥园区: 标题声明 35 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 邮亭产发中心: 标题声明 32 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区科技局: 标题声明 2 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区文化旅游委: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 区龙水湖旅游度假区发展中心: 标题声明 22 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-集团本部: 标题声明 20 项,解析 0 项
+2026-09-03 17:59:42,581 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-足锶公司: 标题声明 1 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 邮亭产业发展中心: 标题声明 9 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团-发展集团: 标题声明 3 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 发展（开创）集团-开创集团: 标题声明 17 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-旅业公司: 标题声明 11 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 文旅集团-鑫发公司: 标题声明 6 项,解析 0 项
+2026-09-03 17:59:42,582 - E:\STangWork\PythonProjects\skp_parser\main.py - WARNING - 分类校验[附件 大足区2025年度项目“三张清单”（删减）.xlsx] 高科集团-足锶集团: 标题声明 3 项,解析 0 项
+2026-09-03 17:59:46,756 - E:\STangWork\PythonProjects\skp_parser\run_single.py - INFO - OK: 附件 大足区2025年度项目“三张清单”（删减）.xlsx (file_id=1518, 项目 1033 条)
+2026-09-03 17:59:46,756 - E:\STangWork\PythonProjects\skp_parser\util\db_util.py - INFO - 数据库连接池已关闭
