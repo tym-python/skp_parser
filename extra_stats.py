@@ -1,4 +1,4 @@
-"""extra 字段统计与提列:统计 skp_file_extra 中各字段出现率,超过半数项目者并入 skp_project。
+"""extra 字段统计与提列:统计 skp_project.extra_info 中各字段出现率,超过半数项目者并入 skp_project。
 
 用法:
     python extra_stats.py [--apply]   # 默认仅统计;--apply 执行提列(ALTER + 回填)
@@ -7,7 +7,6 @@
 """
 
 import asyncio
-import json
 import sys
 from typing import Dict, List
 
@@ -23,17 +22,17 @@ FIELD_TO_COLUMN: Dict[str, str] = {
 }
 
 
-async def stats(db: AsyncDB) -> None:
+async def stats(db: AsyncDB) -> List[str]:
     """统计各 extra 字段的出现次数与占比。"""
     total = (await db.query("SELECT COUNT(*) n FROM skp_project"))[0]['n']
     if total == 0:
         logger.warning("skp_project 为空,先运行全量扫描")
-        return
+        return []
 
     rows = await db.query("""
-        SELECT j.field_name, COUNT(DISTINCT e.project_id) AS n
-        FROM skp_file_extra e
-        JOIN JSON_TABLE(JSON_KEYS(e.extra_info), '$[*]'
+        SELECT j.field_name, COUNT(*) AS n
+        FROM skp_project p
+        JOIN JSON_TABLE(p.extra_info, '$[*]'
              COLUMNS (field_name VARCHAR(64) PATH '$')) j
         GROUP BY j.field_name
         ORDER BY n DESC
@@ -58,7 +57,7 @@ async def stats(db: AsyncDB) -> None:
 
 
 async def promote_fields(db: AsyncDB, fields: List[str]) -> None:
-    """将超半数字段从 extra 提为 skp_project 列并回填数据。"""
+    """将超半数字段从 extra_info 提为 skp_project 列并回填数据。"""
     for name in fields:
         col = FIELD_TO_COLUMN.get(name)
         if not col:
@@ -81,21 +80,21 @@ async def promote_fields(db: AsyncDB, fields: List[str]) -> None:
         # 回填:从 extra_info 取该字段
         await db.execute(
             f"""UPDATE skp_project p
-                JOIN skp_file_extra e ON e.project_id = p.id
-                SET p.`{col}` = JSON_UNQUOTE(JSON_EXTRACT(e.extra_info, %s))
-                WHERE JSON_CONTAINS_PATH(e.extra_info, 'one', %s)""",
+                SET p.`{col}` = JSON_UNQUOTE(JSON_EXTRACT(p.extra_info, %s))
+                WHERE p.extra_info IS NOT NULL
+                  AND JSON_CONTAINS_PATH(p.extra_info, 'one', %s)""",
             (f'$.{name}', f'$.{name}'))
         filled = (await db.query(
             f"SELECT COUNT(*) n FROM skp_project WHERE `{col}` <> ''"))[0]['n']
         logger.info(f"字段 [{name}] → {col} 回填 {filled} 条")
 
-    # 回填完成后移除 skp_file_extra 中已提列字段
+    # 回填完成后移除 extra_info 中已提列字段
     for name in fields:
         await db.execute(
-            "UPDATE skp_file_extra SET extra_info = JSON_REMOVE(extra_info, %s) "
-            "WHERE JSON_CONTAINS_PATH(extra_info, 'one', %s)",
+            "UPDATE skp_project SET extra_info = JSON_REMOVE(extra_info, %s) "
+            "WHERE extra_info IS NOT NULL AND JSON_CONTAINS_PATH(extra_info, 'one', %s)",
             (f'$.{name}', f'$.{name}'))
-    logger.info("extra 中已提列字段已移除")
+    logger.info("extra_info 中已提列字段已移除")
 
 
 async def main() -> None:
