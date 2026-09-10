@@ -10,10 +10,10 @@ from typing import Any, Dict, List, Optional, Tuple
 # 表头别名 → 标准字段(注意:别名用完整词,避免短词误匹配,如用"项目名称"而非"项目")
 #
 # 单位类列名分组(语义相同者合并,无法区分者留 extra):
-# - construction_unit(建设单位/项目法人):项目的建设实施方
-# - project_owner(项目业主/业主单位):项目的业主/出资方,单独存一列
+# - construction_unit(建设单位/项目法人):项目的建设实施方(含 项目实施主体)
+# - project_owner(项目业主/业主单位):项目的业主/出资方,单独一组
 # - responsible_unit(责任单位/牵头单位/项目主管单位):行政监管/责任/牵头方
-# - 项目实施主体:语义介于两者之间,无法可靠区分 → 不映射,入 extra
+# 三组入库时转入 skp_project_unit(单位表头 + 单位名称),字段见 UNIT_FIELDS
 HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'project_name': ('项目名称', '项目名', '工程名称', '工程名', '名称', '项目单位及名称'),
     'construction_unit': ('建设单位', '实施单位', '项目单位', '项目法人', '建设主体', '法人单位','项目实施主体'),
@@ -28,9 +28,12 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'construction_content': ('建设内容', '主要建设内容', '建设规模', '建设规模和内容',
                              '建设规模及内容', '建设规模及主要内容', '拟建设规模', '项目内容', '项目简介'),
     'responsible_unit': ('责任单位', '牵头单位', '项目主管单位', '监管单位', '主管部门', '主管单位'),
-    'category': ('项目类别', '产业类别', '项目分类', '项目大类', '行业分类', '项目类型', '项目领域', '所属行业', '行业类别'),
+    'category': ('项目类别', '产业类别', '项目分类', '项目大类', '行业分类', '项目类型', '项目领域', '领域分类', '所属行业', '行业类别', '九大领域'),
     'project_type': ('建设性质', '建设阶段', '建设批次'),
 }
+
+# 单位类字段:入库时转入 skp_project_unit(单位表头 + 单位名称),不再写入 skp_project
+UNIT_FIELDS: Tuple[str, ...] = ('construction_unit', 'project_owner', 'responsible_unit')
 
 # 金额文本:如 "120.5亿元"、"120000万元"、"120,000"、"总投资:250000万元"
 INVESTMENT_RE = re.compile(r'([\d,，]+(?:\.\d+)?)\s*(亿元|万元|亿|万)?')
@@ -54,6 +57,16 @@ def match_field(header: Any) -> Optional[str]:
     短别名("名称/项目名/工程名")精确匹配——如 "项目名单" 含子串 "项目名",
     但它是标题而非表头;复合词表头(如 "单位名称")也不应误配。
     """
+    matched = match_field_with_alias(header)
+    return matched[0] if matched else None
+
+
+def match_field_with_alias(header: Any) -> Optional[Tuple[str, str]]:
+    """同 match_field,但连命中的别名原文一起返回(如 "项目法人"),映射不到返回 None。
+
+    别名原文用于单位类列记录来源表头(skp_project_unit.unit_header);
+    年投资计划组合表头无对应别名,原文为 ""。
+    """
     # 去空格/换行/连字符(合并表头可能生成 "开工-时间"、"建设-地点")
     text = str(header or '').strip().lower().replace('\n', '').replace(' ', '').replace('-', '')
     if not text:
@@ -64,18 +77,18 @@ def match_field(header: Any) -> Optional[str]:
     # (否则 "投资计划" 子串先命中 annual_investment)
     if re.search(r'(投资计划|计划投资|年度投资)', text):
         if '主要建设内容' in text or '建设内容' in text:
-            return 'annual_goal'          # 子=主要建设内容 → 年度建设内容
+            return 'annual_goal', ''          # 子=主要建设内容 → 年度建设内容
         if '新增生产' in text or '生产能力' in text:
-            return None                   # 子=新增生产能力 → 非金额,留 extra
+            return None                       # 子=新增生产能力 → 非金额,留 extra
         if '小计' in text or '合计' in text:
-            return 'annual_investment'    # 子=小计 → 年度计划投资
+            return 'annual_investment', ''    # 子=小计 → 年度计划投资
     for field, aliases in HEADER_ALIASES.items():
         for alias in aliases:
             if alias in _EXACT_ALIASES:
                 if text == alias:
-                    return field
+                    return field, alias
             elif alias in text:
-                return field
+                return field, alias
     return None
 
 
@@ -161,6 +174,19 @@ def _excel_serial_to_year(value: float) -> int:
     return 0
 
 
+def _matched_alias(idx: int, headers: Optional[List[Any]], field: str) -> str:
+    """取表头列命中的别名原文(如 "项目法人"),无表头/未命中/与字段不符返回 ""。
+
+    跨页续页复用上一页表头映射时 headers 可能是数据行
+    (base_parser.extract_rows_from_table 的 prev_header_map 分支),
+    故须校验命中字段与本列字段一致,防把数据文本里的其他单位别名当来源表头。
+    """
+    if not headers or idx >= len(headers):
+        return ''
+    matched = match_field_with_alias(headers[idx])
+    return matched[1] if matched and matched[0] == field else ''
+
+
 def map_row(header_map: Dict[int, str], row: List[Any],
             headers: Optional[List[Any]] = None, file_year: int = 0,
             pname_candidates: Optional[List[int]] = None) -> Dict[str, Any]:
@@ -169,7 +195,9 @@ def map_row(header_map: Dict[int, str], row: List[Any],
     - 金额列 → 万元数值(裸数字按表头单位换算);表头含显式年份且非文件年份的
       "年计划投资"类列 → 收入 extra(区分当年/往年投资)
     - 年份列(含 year_range) → start_year/end_year
-    - 单位类列名并存时非空优先(如 建设单位 与 项目法人 同现)
+    - 单位类列名并存时非空优先(如 建设单位 与 项目法人 同现),来源表头记入
+      `unit_headers`(字段名 → 命中的别名原文,如 {"construction_unit": "项目法人"}),
+      供入库转存 skp_project_unit;不改变字段取值
     - 未映射列(表头有文本)→ 收入 extra_fields(文件特有信息)
     - pname_candidates: project_name 候选列(表头修正前后),主列为空时
       (合并单元格只首格有值,如 芜湖/宁夏 名称在左格)回退取第一个合格值
@@ -213,6 +241,11 @@ def map_row(header_map: Dict[int, str], row: List[Any],
             # 单位类列名并存(如 建设单位+项目法人)→ 非空优先
             if field not in project or not project[field]:
                 project[field] = value
+                # 单位类列:记录文件实际命中的别名原文,供入库转存 skp_project_unit
+                if value and field in UNIT_FIELDS:
+                    alias = _matched_alias(idx, headers, field)
+                    if alias:
+                        project.setdefault('unit_headers', {})[field] = alias
 
     # project_name 候选列回退:主列(表头修正/合并单元格)为空时,取候选列
     # (修正前后列)中第一个合格值——非空、非纯数字(序号/金额)、非占位符、含中文
