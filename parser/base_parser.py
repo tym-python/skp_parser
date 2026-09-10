@@ -40,6 +40,17 @@ CATEGORY_Supplement_WORDS = (
     '一产项目','二产项目','三产项目',
 )
 
+# 兜底分支(序号+分类标题)护栏参数:update_category_context 的兜底把"去序号、
+# 去括号统计后"的整段文本当分类名,但整段实为 项目名称+建设内容 拼接的业务数据行
+# (如 温州 882 "878 科技创新强基领域 全省海上风电…（白马湖实验室） 项目拟选址…
+# （5个桩基式…）…"——括号统计门控被建设内容里的 "（5个桩基式…" 放行)时,
+# 会把 90 余字的名称+内容整体误设为分类,污染后续全部项目的 category。护栏:
+# 长度上限(真实分类名极少超过该长度;项目名+内容拼接必超长)+ 句子标点限定
+# (真实分类名无句读——顿号"、"是枚举、可出现在分类名中,不作限定;名称+内容
+# 拼接必含 ，。； 等句读)。
+FALLBACK_CATEGORY_MAX_LEN = 24
+FALLBACK_CATEGORY_PUNCT_RE = re.compile(r'[，。；;:：,]')
+
 # 城市/地区分组行的名称长度上限(去单元格内空格后统计,如 "南宁市"3、"防城港市"4、
 # "乌鲁木齐市"5、正文对齐变体 "南 宁 市"→3):市/区 结尾须短名才认作分组行——
 # "汉中综合保税区"、"…灌区/…新校区/…园区" 等真项目名以"市/区"结尾但更长,不误弃
@@ -143,6 +154,57 @@ class BaseParser(ABC):
                     and not (len(non_empty) == 1 and len(non_empty[0]) > 30):
                 return header_map, idx
         return None, -1
+
+    # 无表头清单表:数据行首列序号形态(纯数字,容忍 "（1）"/"1、"/"1." 等包裹)
+    POSITIONAL_SEQ_RE = re.compile(r'^[（(]?\s*\d+\s*[)）]?[、.．]?\s*$')
+    # 无表头清单表:表名行特征(含 项目/工程 + 清单类词,如 "2022年市级重点项目名单（建设类）")
+    POSITIONAL_TITLE_RE = re.compile(r'(?:项目|工程)[^（()）\n]{0,16}?(?:名单|清单|列表|目录|总表)')
+
+    @staticmethod
+    def _positional_header(rows: List[List[Any]]) -> Optional[Tuple[Dict[int, str], int]]:
+        """无表头项目清单表的位置式兜底映射(find_header 未命中且无 prev_header_map 时调用)。
+
+        场景:通知文件文末表格,首行为表名(如 "2022年市级重点项目名单（建设类）")
+        或直接分组/分类行,无列头;数据行按非空列顺序 = 序号/项目名称/建设规模
+        (烟台 2022、濮阳 2023 等)。列角色:
+        - 首列序号(POSITIONAL_SEQ_RE)→ 不映射;
+        - 第 2 个非空列 → project_name;第 3 个非空列 → construction_content(建设规模)。
+        护栏:须有 ≥5 行 "数字首列 + 中文名称" 数据行,否则返回 None(保持整表跳过的
+        原行为,抄送/空模板/统计表等自然排除)。
+        返回 (header_map, 表名行索引;无表名行为 -1,此时数据从第 0 行起)。
+        """
+        title_idx = -1
+        for idx in range(min(3, len(rows))):
+            texts = [str(c).strip() for c in rows[idx]
+                     if c is not None and str(c).strip() and not BaseParser._is_number(c)
+                     and not BaseParser._is_placeholder(c)]
+            if len(texts) == 1 and BaseParser.POSITIONAL_TITLE_RE.search(texts[0]):
+                title_idx = idx
+                break
+        name_col = scale_col = None
+        data_cnt = 0
+        for row in rows:
+            cells = [str(c or '').strip() for c in row]
+            if not cells or not BaseParser.POSITIONAL_SEQ_RE.match(cells[0]):
+                continue
+            cols = [i for i in range(1, len(cells))
+                    if cells[i] and not BaseParser._is_number(cells[i])
+                    and not BaseParser._is_placeholder(cells[i])]
+            if not cols:
+                continue
+            if name_col is None:
+                if not re.search(r'[一-鿿]', cells[cols[0]]):
+                    continue
+                name_col = cols[0]
+            elif scale_col is None and len(cols) >= 2:
+                scale_col = cols[1]
+            data_cnt += 1
+        if data_cnt < 5 or name_col is None:
+            return None
+        header_map: Dict[int, str] = {name_col: 'project_name'}
+        if scale_col is not None:
+            header_map[scale_col] = 'construction_content'
+        return header_map, title_idx
 
     @staticmethod
     def skip_summary_row(row: List[Any]) -> bool:
@@ -990,8 +1052,14 @@ class BaseParser(ABC):
         cleaned = re.sub(r'^\s*\d+\s*', '', text)
         cleaned = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项|个)[^）)]*[)）].*$', '', cleaned).strip()
         # 排除 汇总行("总计/合计/小计")
+        # 护栏:长度上限 + 句子标点限定——兜底放行后 cleaned 实为 名称+建设内容
+        # 拼接的业务数据行(温州 882 "878 科技创新强基领域 全省海上风电…（5个桩基
+        # 式…）…" 括号统计门控被建设内容括号放行)时超长且含句读,不再误设分类;
+        # 真实分类名(≤24 字、无句读)不受影响
         if cleaned and cleaned != text.strip() \
-                and not re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned):
+                and not re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned) \
+                and len(cleaned) <= FALLBACK_CATEGORY_MAX_LEN \
+                and not FALLBACK_CATEGORY_PUNCT_RE.search(cleaned):
             BaseParser._record_declared(text, context)
             BaseParser._set_category(context, cleaned)
             return True
@@ -1035,6 +1103,9 @@ class BaseParser(ABC):
         name = re.sub(r'\s+[\d,，.]+(?:\s+[\d,，.]+)*\s*$', '', name)
         # 去尾部斜杠(如 "基础设施项目/（193项）" 跨行归一后 → "基础设施项目")
         name = name.rstrip('/')
+        # 去尾部冒号(如 "市场主导类项目：162个" 去量词后残留 "市场主导类项目："
+        # 的分类名+冒号;冒号分隔的项数说明不属于分类名)
+        name = name.rstrip('：:').strip()
         return name.strip()[:128]
 
     @staticmethod
@@ -1286,18 +1357,38 @@ class BaseParser(ABC):
         """
         projects: List[Dict[str, Any]] = []
         context = context if context is not None else {}
-        if prev_header_map is not None:
+        # 每表重新定位表头:同文件含多个独立表格且表头不一致时(如 永川 2022
+        # 通知——附件一"政府主导"表[建设性质/起止年限/工作目标/责任部门] 与
+        # 附件二"前期"表[建设内容/工作计划/牵头部门/配合部门] 列不同),各表表头
+        # 行须按本表识别,否则后表会被前表映射错位(建设内容→project_type 等)。
+        # 仅当本表无表头行(跨页表格续页,首页表头被拆成独立 table 且续页顶部无
+        # 表头,如 湖北 多页表)才复用上一页映射 prev_header_map
+        header_map, header_idx = BaseParser.find_header(rows)
+        positional = False
+        if header_map is not None:
+            headers = rows[header_idx] if header_idx >= 0 else None
+            start = header_idx + 1
+        elif prev_header_map is not None:
             header_map = prev_header_map
             headers = rows[0] if rows else None
             start = 0
         else:
-            header_map, header_idx = BaseParser.find_header(rows)
-            if header_map is None:
+            # 无表头项目清单兜底:首行为表名(…项目名单/项目清单)的表格,按非空列
+            # 顺序默认 序号/项目名称/建设规模(烟台 2022、濮阳 2023 等通知文末表)
+            pos = BaseParser._positional_header(rows)
+            if pos is None:
                 return [], None
+            header_map, header_idx = pos
+            positional = True
+            logger.warning(
+                f"识别 headermap 失败但判定为项目清单,按列位置默认为项目"
+                f"(序号/项目名称/建设规模;名称列={header_map},表名行={header_idx})")
             headers = rows[header_idx] if header_idx >= 0 else None
-            start = header_idx + 1
+            start = header_idx + 1 if header_idx >= 0 else 0
         for row_i, row in enumerate(rows[start:], start=1):
             cells = list(row)
+            if row_i == 882-1:
+                pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue
             # 页顶重复表头行(跨页表格):跳过,不参与续行/数据
@@ -1322,15 +1413,30 @@ class BaseParser(ABC):
             # - 首列为短分段名(≤6 字且以"段"结尾,如 广东"江门段",无序号列表格)
             first = str(cells[0] or '').strip() if cells else ''
             if not first or re.match(r'^.{1,6}段$', first):
-                continue
+                # 无表头清单表:首列空的分类/性质行(如 濮阳 "一、现代服务业项目3个")
+                # 不走续行跳过,仍更新分类/建设性质上下文
+                if positional:
+                    joined = " ".join(str(c).strip() for c in cells if c is not None and str(c).strip())
+                    if (BaseParser.group_type_title(cells, header_map)
+                            or self.apply_category(joined, context)):
+                        continue
+                continue # TODO,为什么要有这一步
             # 建设性质标题行(单格纯词,如 安徽表 "续建"/"计划开工")→ project_type 上下文
             build_type = BaseParser.group_type_title(cells, header_map)
             if build_type:
                 context['project_type'] = build_type
                 continue
-            # 全行文本做分类检测(分类行可能出现在项目名称列之外,如合并单元格)
+            # 全行文本做分类检测(分类行可能出现在项目名称列之外,如合并单元格)。
+            # 参考 xlsx 补充业务行检测:业务数据行(序号列为纯数字 + 业务字段列含
+            # 真文本,见 is_business_data_row)的全行文本不喂 apply_category——
+            # 否则建设内容里的 "（5个桩基式…）" 等括号会被括号统计门控放行、落入
+            # 兜底分支把 名称+内容 整体误设为分类,污染后续项目 category(温州 882)。
+            # 护栏:仅当 序号列为纯数字 才短路——分类/分组行的序号列为 "一、续建类"
+            # 等非数字文本,不受影响,照常走 apply_category 识别分类。
             joined = " ".join(str(c).strip() for c in cells if c is not None and str(c).strip())
-            if self.apply_category(joined, context):
+            is_biz_row = bool(first) and BaseParser._is_number(first) \
+                and BaseParser.is_business_data_row(cells, header_map)
+            if not is_biz_row and self.apply_category(joined, context):
                 continue
             group_pending = False
             # 单格行且无序号 → 分类标题行(如 广东表 "基础设施工程"、安徽表 "1、合肥市(915个)")
@@ -1366,6 +1472,42 @@ class BaseParser(ABC):
     def _is_placeholder(s):
         '''占位符单元格(如 "——" / "--"):无意义,视为空,不参与文本/分类判断'''
         return bool(re.fullmatch(r'[—－\s-]+', str(s or '').strip()))
+
+    @staticmethod
+    def is_business_data_row(cells: List[Any], header_map: Dict[int, str]) -> bool:
+        """业务数据行检测(header_map 列语义):业务字段列含非纯数字文本 → 数据行。
+
+        业务字段列 = header_map 映射字段中排除 项目名称 的列(责任单位/建设性质/
+        建设年限/项目业主/总投资 等),含 建设内容(表头别名与项目名称互斥,内容列
+        不会放项目名;长文本 >20 字必为真建设内容 → 业务数据)。
+        分类行的"数量+金额"为纯数字单元格,不触发;
+        数据行(如 渭南/开州 含 "（N个）" 的行)由责任单位/性质/年限等文本列识别,
+        建设内容中的 "（N个）" 不参与判定。
+        纯数字、占位符、numCell 不是有效业务数据。
+
+        上提到 BaseParser 供 xlsx 循环与 docx/pdf 表格路径(extract_rows_from_table)
+        共用:xlsx 用它短路"非业务行才做 分组/性质/分类 识别",docx/pdf 表格路径
+        同样需要——否则业务行建设内容里的 "（5个桩基式…）" 等括号文本会被
+        apply_category 的括号统计门控 + 兜底分支误吞为分类行(温州 882)。
+        """
+        for col, field in header_map.items():
+            if field == 'project_name':
+                continue
+            if col >= len(cells):
+                continue
+            v = str(cells[col] or '').strip()
+            if field == 'construction_content':
+                # 建设内容:文本 >20 字 = 真建设内容 → 业务数据;
+                # 短文本(≤20,分类行说明/数量/占位)不触发
+                if v and not BaseParser._is_number(v) and not BaseParser._is_placeholder(v) \
+                        and len(v) > 20:
+                    return True
+                continue
+            # 纯数字、占位符、numCell(如 "（共33个）")不是有效业务数据
+            numCell = re.fullmatch(r'[（(]?\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]?', v)
+            if v and not BaseParser._is_number(v) and not BaseParser._is_placeholder(v) and not numCell:
+                return True
+        return False
 
     @staticmethod
     def _filter_seconde_name(s):
