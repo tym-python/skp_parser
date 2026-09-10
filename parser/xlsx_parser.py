@@ -161,10 +161,6 @@ class XlsxParser(BaseParser):
         # 宽松规则文件级统计:数据行 ≥80% 有业务文本 + 潜在分类行多数无暗示条件
         full_field_sheet, plain_category_file = self._calc_full_field_stats(
             header_map, all_rows, header_idx, pname_candidates)
-        # 收集本 sheet 统计(供 main 保存到 skp_file.full_field_status)
-        if not hasattr(self, 'sheet_stats'):
-            self.sheet_stats = {}
-        self.sheet_stats[sheet.title] = getattr(self, '_last_full_stats', {})
         # 目录+正文 单行表头 sheet 预扫描(招商手册,如 广西(第一批) 目录后的正文区):
         # 正文区 = 已见 ≥5 个编号行后、出现 ≥3 个连续无序号行,且**该 run 之后不再有
         # 编号行**——目录/清单编号行居多的极简 sheet(如 汉中)不会命中;正文区行全为
@@ -202,7 +198,7 @@ class XlsxParser(BaseParser):
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
             cells = list(row)
-            if i == 475-1:
+            if i == 882-1:
                 pass
             # 跳过空行，跳过汇总行
             if not self.is_data_row(cells) or self.skip_summary_row(cells):
@@ -627,15 +623,6 @@ class XlsxParser(BaseParser):
                 plain += 1
         full_field_sheet = total > 0 and full / total >= 0.8
         plain_category_file = (hinted + plain) > 0 and hinted / (hinted + plain) < 0.5
-        # 记录统计明细(供 skp_file.full_field_status 保存与分析)
-        self._last_full_stats = {
-            'relax': full_field_sheet and plain_category_file,
-            'full_field_sheet': full_field_sheet,
-            'plain_category_file': plain_category_file,
-            'full': full, 'total': total, 'hinted': hinted, 'plain': plain,
-            'biz_fields': sorted(f for f in header_map.values()
-                                 if f in FULL_FIELD_NAMES),
-        }
         return full_field_sheet, plain_category_file
 
     def _has_name_text(self, cells: List[Any],
