@@ -10,7 +10,6 @@
 
 import asyncio
 import hashlib
-import json
 import platform
 import re
 import sys
@@ -157,10 +156,6 @@ async def process_file(db: AsyncDB, base_dir: Path, file_path: Path,
         'file_size': len(bs),
         'file_hash': file_hash,
         'status': 1 if (gofast_url or not upload) else 0,
-        # full_field 宽松规则统计(按 sheet):relax/full/total/hinted/plain/biz_fields
-        'full_field_status': json.dumps(
-            {'sheets': getattr(parser, 'sheet_stats', {})},
-            ensure_ascii=False) if hasattr(parser, 'sheet_stats') else None,
     }
     file_id = await db.save_file_with_projects(file_data, projects)
     if file_id is None:
@@ -246,8 +241,8 @@ def print_summary(report: SummaryReport) -> None:
     logger.info("=" * 40)
 
 
-async def run(directory: str, upload: bool = True) -> None:
-    async with AsyncDB() as db:
+async def run(directory: str, upload: bool = True, dbkey:str='local') -> None:
+    async with AsyncDB(dbkey=dbkey) as db:
         await db.init_db()
         report = await scan_and_process(db, directory, upload=upload)
         print_summary(report)
@@ -256,8 +251,10 @@ async def run(directory: str, upload: bool = True) -> None:
 def main() -> None:
     directory = sys.argv[1] if len(sys.argv) > 1 else skpFilePath
     upload = resolve_upload()
+    argv = sys.argv[1:]
+    dbkey = argv[argv.index('--dbkey')+1] if '--dbkey' in argv else 'local'
     logger.info(f"开始处理目录: {directory}(上传 GoFast: {upload})")
-    asyncio.run(run(directory, upload=upload))
+    asyncio.run(run(directory, upload=upload, dbkey=dbkey))
 
 
 if __name__ == "__main__":

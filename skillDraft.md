@@ -37,7 +37,7 @@ skp_parser/
     └── area_id.py           # 省份 ID 常量
 ```
 
-## 表结构(MySQL,4 张表)
+## 表结构(MySQL,5 张表)
 
 ```sql
 -- 文件表:每个被解析的原文件一条记录,记录 GoFast 关联
@@ -58,39 +58,40 @@ CREATE TABLE IF NOT EXISTS skp_file (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 项目表:解析出的省重点项目明细,file_id 关联 skp_file
+-- 单位类字段(建设单位/责任单位/项目业主)已迁出,见表 skp_project_unit
 CREATE TABLE IF NOT EXISTS skp_project (
   id                    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   file_id               BIGINT UNSIGNED NOT NULL COMMENT '关联 skp_file.id',
   area_id               INT           DEFAULT 0 COMMENT '省份ID',
   project_name          VARCHAR(255)  NOT NULL COMMENT '项目名称',
-  construction_unit     VARCHAR(255)  DEFAULT '' COMMENT '建设单位/项目法人',
   location              VARCHAR(255)  DEFAULT '' COMMENT '建设地点',
   total_investment      DECIMAL(20,2) DEFAULT 0 COMMENT '总投资(万元)',
   annual_investment     DECIMAL(20,2) DEFAULT 0 COMMENT '年度计划投资(万元)',
   start_year            INT           DEFAULT 0 COMMENT '开工年份',
   end_year              INT           DEFAULT 0 COMMENT '竣工年份',
   construction_content  TEXT COMMENT '建设内容',
-  responsible_unit      VARCHAR(255)  DEFAULT '' COMMENT '责任单位/牵头单位',
-  project_owner         VARCHAR(255)  DEFAULT '' COMMENT '项目业主/业主单位(业主方)',
   source_row            INT           DEFAULT 0 COMMENT '源文件中的行号(调试用)',
   project_type          VARCHAR(32)   DEFAULT '' COMMENT '建设性质:新建/续建/竣工投产/预备/储备',
   category              VARCHAR(128)  DEFAULT '' COMMENT '行业分类(如 工业-电子信息,多级用-连接)',
   annual_goal           VARCHAR(512)  DEFAULT '' COMMENT '年度工作目标(前期研究阶段项目)',
   raw_fields            JSON COMMENT '未映射字段的原始数据',
+  extra_info            JSON COMMENT '文件特有信息(如 {"合作方式":"合资","联系方式":"xxx"}),原 skp_file_extra.extra_info',
   created_at            DATETIME      DEFAULT CURRENT_TIMESTAMP,
   KEY idx_file (file_id),
   KEY idx_name (project_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 文件特有信息表:非共性字段,每项目一行 JSON(如 内蒙古表的"合作方式/联系方式")
-CREATE TABLE IF NOT EXISTS skp_file_extra (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  file_id      BIGINT UNSIGNED NOT NULL COMMENT '关联 skp_file.id',
-  project_id   BIGINT UNSIGNED NOT NULL COMMENT '关联 skp_project.id(该行项目)',
-  extra_info   JSON COMMENT '如 {"合作方式":"合资","联系方式":"xxx"}',
-  created_at   DATETIME      DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_file (file_id),
-  KEY idx_project (project_id)
+-- 项目相关单位表:一条项目可有多个单位行(单位表头 + 单位名称)
+-- 表头 = 文件里实际命中的列名别名原文(如 项目法人/牵头单位),见 field_mapping.HEADER_ALIASES
+CREATE TABLE IF NOT EXISTS skp_project_unit (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id  BIGINT UNSIGNED NOT NULL COMMENT '关联 skp_project.id',
+  unit_header VARCHAR(64)   DEFAULT '' COMMENT '单位表头(文件列名原文,如 建设单位/项目法人/责任单位)',
+  unit_name   VARCHAR(255)  DEFAULT '' COMMENT '单位名称',
+  unit_id     BIGINT UNSIGNED DEFAULT 0 COMMENT '单位ID(外部单位库,由 AsyncDB.get_company_id 提供)',
+  created_at  DATETIME      DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_project (project_id),
+  KEY idx_unit_id (unit_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 红头文件(计划通知类)信息表
@@ -109,20 +110,10 @@ CREATE TABLE IF NOT EXISTS skp_notice (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 ```
 
-表结构演进:新列通过 `init_db()` 的 `_ensure_column` 自动迁移补列(不改动已有数据)。
-
-**skp_file.full_field_status(JSON)**:记录 full_field 宽松规则的逐 sheet 统计
-(解析时由 XlsxParser 收集,main 入库时写入),供人工分析统计口径/阈值:
-```json
-{"sheets": {"Sheet1": {"relax": false, "full_field_sheet": false, "plain_category_file": true,
-  "full": 115, "total": 160, "hinted": 4, "plain": 41,
-  "biz_fields": ["construction_content", "project_owner", "responsible_unit"]}}}
-```
-- `relax`: 本 sheet 是否启用词表外分类行放宽(full_field_sheet and plain_category_file)
-- `full/total`: full 率统计(有业务文本行/有名称或业务的行)
-- `hinted/plain`: 无业务文本的潜在分类行中带/不带暗示条件的数量
-- `biz_fields`: header_map 命中 FULL_FIELD_NAMES 的业务字段
-(垫江前期类分类层级多的文件 full 率被分类行稀释 <80%,统计入库供分析后再定口径)
+表结构演进:新列通过 `init_db()` 的 `_ensure_column` 自动迁移补列(不改动已有数据);
+废弃字段/表由 `init_db()` 自动清理(删除 skp_file.full_field_status 列、DROP skp_file_extra 表、
+删除 skp_project 的 construction_unit/responsible_unit/project_owner 三列——单位值改存
+skp_project_unit,存量值不回填,需重现历史单位数据请重跑对应文件)。
 
 ## 执行流程(概览)
 
@@ -133,7 +124,7 @@ CREATE TABLE IF NOT EXISTS skp_notice (
        2. 解析项目记录(解析库同步,asyncio.to_thread 防阻塞)
        3. 通知类文件额外解析通知元信息(skp_notice)
        4. 上传 GoFast(按平台/开关)
-       5. 单事务入库:skp_file + skp_project(+ skp_file_extra)
+       5. 单事务入库:skp_file + skp_project + skp_project_unit(项目单位行)
        6. 汇总报告:成功/失败/跳过/项目总数/失败清单
 ```
 
@@ -194,6 +185,17 @@ CREATE TABLE IF NOT EXISTS skp_notice (
   "数量+金额"为纯数字单元格(含千分位逗号,如 "1,584,946.56")不触发;
   纯数字、占位符、numCell = re.fullmatch(r'[（(]?\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]?' ,v)，不是有效业务数据
   (如 补充，['一', '续建项目', '33个', None, None, 8524816])
+- **docx/pdf 表格路径接入业务行检测(同 xlsx 口径)**:extract_rows_from_table 中
+  业务数据行(序号列为纯数字 + is_business_data_row 命中)的全行文本不喂
+  apply_category,直接映射为项目——温州百项千亿 docx 第 878 条 "全省海上风电技术
+  重点实验室实证中心（白马湖实验室）" 的建设内容含 "（5个桩基式大兆瓦风机试验台…）",
+  曾被括号统计门控放行、落入兜底分支把 名称+内容 整体(90 余字)误设为分类,
+  吞掉该条并污染其后全部项目 category(996 条只出 995)。护栏:仅当**序号列为纯
+  数字**才短路——"一、续建类" 等分块标题行序号列非数字,照常走 apply_category 识别
+- **update_category_context 兜底分支护栏(长度+句读)**:兜底(去序号/括号统计后整段
+  当分类名)加双限定——cleaned ≤ FALLBACK_CATEGORY_MAX_LEN(=24)字且不含句子标点
+  (，。；;:：,;顿号"、"是枚举、分类名可含,不限定)——名称+内容拼接超长且必含
+  句读,不再误设分类;真实分类名(≤24 字、无句读)不受影响
 - **合并单元格分类列识别(cat_scope)**:前提是 header_map 存在 category 映射列
   (表头命中 category 别名,如 "项目类型"/"领域分类")且该列有数据行合并单元格
   (分类信息存于合并首格,如 内蒙古 col0"项目类型" / col1"（一）xxx" 纵向合并)。
@@ -275,11 +277,15 @@ CREATE TABLE IF NOT EXISTS skp_notice (
   - `construction_unit`(建设方):建设单位/实施单位/项目单位/项目法人/建设主体/法人单位
   - `project_owner`(业主方,单独一列):项目业主/业主单位/业主
   - `responsible_unit`(责任方):责任单位/牵头单位/项目主管单位/监管单位/主管部门/主管单位
-  - 项目实施主体:语义介于两者之间,无法可靠区分 → 入 extra
+  - `项目实施主体`:归入 construction_unit(语义相近,按建设单位处理)
   - 同组多列并存时非空优先(如 建设单位 与 项目法人 同现)
+  - **入库去向**:这三组字段不再写入 `skp_project`,统一按「表头 + 单位名称」转存
+    `skp_project_unit`(每条项目非空者一行);表头取 `map_row` 记录的
+    `unit_headers`(文件实际命中的别名原文,如 "项目法人"/"牵头单位"),
+    解析层缺失来源表头时由入库层回退该组标准名;
 - 建设规模类列(建设规模/建设规模和内容/拟建设规模/建设规模及内容)→ construction_content;
   建设阶段/建设批次 → project_type(值如"续建/在建/一期"等原样存储);
-  行业分类/项目类型 → category;计划工期 → year_range(可解析年份区间时)
+  行业分类/项目类型/领域分类 → category(领域分类 覆盖 浙江 温州 式 "九大领域" 表头);计划工期 → year_range(可解析年份区间时)
 - "金额单位:万元"/"单位：万元" 备注行不与列标题/数据混合(跳过)
 - **全数字字段过滤**:项目名全数字 → 整条过滤;location/project_type/category/
   construction_unit/responsible_unit/project_owner 全数字 → 置空
@@ -541,7 +547,7 @@ UPLOAD_ENABLED = None  # None=按平台自动;True/False=手动指定(手动优�
 
 | 模块 | 用途 |
 |------|------|
-| `util/db_util.py` | `AsyncDB` 类:平台选库(Windows→local,Linux→db252)、连接池、`init_db` 建表+迁移、`save_file_with_projects` 单事务、`save_notice`、`query/execute` |
+| `util/db_util.py` | `AsyncDB` 类:平台选库(Windows→local,Linux→db252)、连接池、`init_db` 建表+迁移(含单位列迁出到 skp_project_unit)、`save_file_with_projects` 单事务(文件+项目+项目单位)、`save_notice`、`query/execute`;`get_company_id`(单位ID)待实现 |
 | `util/go_fast.py` | `GoFast.upload(bs, file_type)` 上传返回 URL |
 | `util/file_config.py` | 默认目录 + 上传开关 |
 | `util/area_id.py` | 省份 ID 常量,`main.detect_area` 按路径/文件名自动识别省份与年份 |
@@ -565,7 +571,9 @@ UPLOAD_ENABLED = None  # None=按平台自动;True/False=手动指定(手动优�
 - [ ] 目录内全部支持格式文件被扫描,无遗漏、无重复处理
 - [ ] 每个成功解析的文件在 `skp_file` 有记录且与项目 `file_id` 关联完整
 - [ ] 金额/年份/分类/建设性质清洗正确,无数量词误判
-- [ ] 文件特有信息按项目存 JSON 于 `skp_file_extra`,共性字段在 `skp_project`
+- [ ] 文件特有信息按项目存 JSON 于 `skp_project.extra_info`,共性字段在 `skp_project`
+- [ ] 单位类字段按「单位表头 + 单位名称」存 `skp_project_unit`(project_id 关联
+      `skp_project.id`,单位名为空不写行),`skp_project` 不再保留单位列
 - [ ] 通知类文件元信息完整(编号/发文单位/时间/附件)
 - [ ] 重复执行同目录不产生重复数据(幂等)
 - [ ] 特殊/失败文件在报告中有明确提示,不静默

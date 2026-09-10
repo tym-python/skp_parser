@@ -43,8 +43,7 @@ async def run_single(file_path: Path, upload: bool) -> None:
         deleted = await db.delete_file_data(file_hash)
         logger.info(
             f"删除旧数据: 文件 {deleted['file']} 条, 项目 {deleted['project']} 条, "
-            f"特有信息 {deleted['extra']} 条, 通知 {deleted['notice']} 条, "
-            f"分类声明 {deleted['category_declared']} 条")
+            f"通知 {deleted['notice']} 条, 分类声明 {deleted['category_declared']} 条")
 
         # 2. 调用主流程单文件处理(解析 → 上传 → 入库)
         result = await process_file(db, skpFilePath, file_path, upload=upload)
@@ -74,11 +73,11 @@ def main(file_path) -> None:
 if __name__ == "__main__":
     # file_path= r'2020年重点项目\2020年各省市重点项目清单汇总：51.63万亿\07宁夏古自治区2020年重点项目清单\2020年宁夏全区重大项目清单（最新）.xlsx'
     # file_path= r'2022年重点项目\05广西自治区2022年重点项目清单\附件 2022年上半年自治区层面统筹推进重大项目退出项目清单.xlsx'
-    file_path= r'2024年重点项目\29四川省2024年重点项目清单\阿坝州2024年\2024年阿坝州重点项目名单.xlsx'
-    file_path= r'2023年重点项目\04重庆市2023年重点项目清单\2023年奉节县\奉节委办发〔2023〕1号附件.xlsx'
+    # file_path= r'2024年重点项目\29四川省2024年重点项目清单\阿坝州2024年\2024年阿坝州重点项目名单.xlsx'
+    # file_path= r'2023年重点项目\04重庆市2023年重点项目清单\2023年奉节县\奉节委办发〔2023〕1号附件.xlsx'
     # file_path= r'2026年重点项目\04重庆市2026年重点项目清单\2026年垫江县\重庆市垫江县2026年重点前期项目清单.xlsx'
-    file_path= r'2022年重点项目\06内蒙古自治区2022年重点项目清单\内蒙古自治区2022年重点经济合作项目.xlsx'
-    file_path= r'2020年重点项目\2020年各省市重点项目清单汇总：51.63万亿\07宁夏古自治区2020年重点项目清单\2020年宁夏全区重大项目清单（最新）.xlsx'
+    # file_path= r'2022年重点项目\06内蒙古自治区2022年重点项目清单\内蒙古自治区2022年重点经济合作项目.xlsx'
+    file_path= r'2026年重点项目\31浙江省2026年重点项目清单\2026年温州市\2.2026年温州市“百项千亿”重大建设项目清单.docx'
 
     full_path = skpFilePath +'\\'+ file_path
     main(Path(full_path))

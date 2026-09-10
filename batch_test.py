@@ -6,6 +6,7 @@
     python batch_test.py pdf --no-upload     # 调试模式,跳过 GoFast 上传
     python batch_test.py xlsx 2022年重点项目 # 仅扫描 skpFilePath 下的子目录
     python batch_test.py docx
+    python batch_test.py xlsx --dbkey db220 --upload   # 扫描xlsx，上传db220
 """
 
 import asyncio
@@ -24,11 +25,11 @@ logger = get_logger(__file__)
 SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', 'xls'}
 
 
-async def batch_test(file_type: str, sub_dir: str, upload: bool) -> None:
+async def batch_test(file_type: str, sub_dir: str, upload: bool, dbkey:str='local') -> None:
     ext = '.' + file_type.lower().lstrip('.')
     if ext not in SUPPORTED_EXT:
         raise ValueError(f"不支持的格式: {file_type}(仅支持 {sorted(SUPPORTED_EXT)})")
-
+    print(sub_dir)
     base = Path(skpFilePath)
     if sub_dir:
         base = base / sub_dir
@@ -40,7 +41,7 @@ async def batch_test(file_type: str, sub_dir: str, upload: bool) -> None:
 
     ok = failed = skipped = project_total = 0
     failed_list: List[Tuple[str, str]] = []
-    async with AsyncDB() as db:
+    async with AsyncDB(dbkey=dbkey) as db:
         await db.init_db()
         import gc
         for fp in files:
@@ -54,8 +55,7 @@ async def batch_test(file_type: str, sub_dir: str, upload: bool) -> None:
                 if any(deleted.values()):
                     logger.info(
                         f"清除旧数据: {fp.name}(文件 {deleted['file']} 条, 项目 {deleted['project']} 条, "
-                        f"特有信息 {deleted['extra']} 条, 通知 {deleted['notice']} 条, "
-                        f"分类声明 {deleted['category_declared']} 条)")
+                        f"通知 {deleted['notice']} 条, 分类声明 {deleted['category_declared']} 条)")
 
                 # 2. 重新解析入库(与主流程一致:解析 → 上传 → 单事务入库)
                 result = await process_file(db, base, fp, upload=upload)
@@ -85,13 +85,15 @@ async def batch_test(file_type: str, sub_dir: str, upload: bool) -> None:
 
 
 def main() -> None:
+    argv = sys.argv[1:]
     args = [a for a in sys.argv[1:] if not a.startswith('--')]
     flags = set(a for a in sys.argv[1:] if a.startswith('--'))
     if not args:
         print(__doc__)
         sys.exit(1)
     file_type = args[0]
-    sub_dir = args[1] if len(args) > 1 else ''
+    sub_dir = ''
+    dbkey = 'local'
 
     if '--upload' in flags:
         upload = True
@@ -100,7 +102,12 @@ def main() -> None:
     else:
         upload = resolve_upload()
 
-    asyncio.run(batch_test(file_type, sub_dir, upload=upload))
+    if '--dbkey' in flags:
+        dbkey = argv[argv.index('--dbkey')+1]
+    if '--sub_dir' in flags:
+        sub_dir = argv[argv.index('--sub_dir')+1]
+    print(f'本次批量解析状态：文件类型：{file_type}，是否上传：{upload}，数据库地址：{dbkey}')
+    asyncio.run(batch_test(file_type, sub_dir, upload=upload,dbkey=dbkey))
 
 
 if __name__ == "__main__":

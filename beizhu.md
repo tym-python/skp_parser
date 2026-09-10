@@ -3,21 +3,17 @@
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.*,
-    e.extra_info
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
-    LEFT JOIN skp_file_extra e ON e.project_id = p.id
 		where length(project_name) <10;
 ### 2. project_name末尾包含 \d+个|项[)）]
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.*,
-    e.extra_info
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
-    LEFT JOIN skp_file_extra e ON e.project_id = p.id 
 	where p.project_name REGEXP '[(（][0-9]+个[)）]+$';
 ### 3. category过长
     		SELECT
@@ -32,7 +28,6 @@
     f.file_path,count(f.file_path) as file_path_num
         FROM skp_file f
         LEFT JOIN skp_project p ON p.file_id = f.id
-        LEFT JOIN skp_file_extra e ON e.project_id = p.id 
              GROUP BY f.file_path ORDER BY file_path_num;
 ### 5. 同文件中，无详情项目数与项目总数不一致
     WITH file_stats AS (
@@ -66,11 +61,9 @@
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.*,
-    e.extra_info
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
-    LEFT JOIN skp_file_extra e ON e.project_id = p.id
 		where project_name REGEXP '市$|区$|县$|州$|盟$|省$|人民政府$|政府$|厅$|局$|委$|办$|管委会$|集团$|公司$';
 
 
@@ -95,9 +88,7 @@
             AND p.location = ''
             AND p.construction_content = ''
             AND p.start_year = ''
-        LEFT JOIN skp_file_extra e 
-            ON e.project_id = p.id
-            AND (e.extra_info = '' OR e.extra_info IS NULL)
+            AND (p.extra_info = '' OR p.extra_info IS NULL)
         GROUP BY f.id, f.file_path
         ORDER BY file_num;
 ### 2. 

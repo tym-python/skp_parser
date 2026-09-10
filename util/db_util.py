@@ -14,7 +14,7 @@
 import json
 import platform
 from typing import Any, Callable, Dict, List, Optional, Tuple
-
+from util.get_company_id import get_company_id
 import aiomysql
 
 from util.db_config import mysql
@@ -48,36 +48,35 @@ CREATE TABLE IF NOT EXISTS skp_project (
   file_id               BIGINT UNSIGNED NOT NULL      COMMENT '关联 skp_file.id',
   area_id               INT           DEFAULT 0       COMMENT '省份ID',
   project_name          VARCHAR(255)  NOT NULL        COMMENT '项目名称',
-  construction_unit     VARCHAR(255)  DEFAULT ''      COMMENT '建设单位',
   location              VARCHAR(255)  DEFAULT ''      COMMENT '建设地点',
   total_investment      DECIMAL(20,2) DEFAULT 0       COMMENT '总投资(万元)',
   annual_investment     DECIMAL(20,2) DEFAULT 0       COMMENT '年度计划投资(万元)',
   start_year            INT           DEFAULT 0       COMMENT '开工年份',
   end_year              INT           DEFAULT 0       COMMENT '竣工年份',
   construction_content  TEXT                          COMMENT '建设内容',
-  responsible_unit      VARCHAR(255)  DEFAULT ''      COMMENT '责任单位',
-  project_owner         VARCHAR(255)  DEFAULT ''      COMMENT '项目业主/业主单位(业主方)',
   source_row            INT           DEFAULT 0       COMMENT '源文件中的行号(调试用)',
   project_type          VARCHAR(32)   DEFAULT ''      COMMENT '建设性质:新建/续建/竣工投产/预备/储备',
   category              VARCHAR(128)  DEFAULT ''      COMMENT '行业分类(如 工业-电子信息)',
   annual_goal           VARCHAR(512)  DEFAULT ''      COMMENT '年度工作目标(前期研究阶段项目)',
   raw_fields            JSON                          COMMENT '未映射字段的原始数据',
+  extra_info            JSON                          COMMENT '文件特有信息(如 {"合作方式":"合资","联系方式":"xxx"}),原 skp_file_extra.extra_info',
   created_at            DATETIME      DEFAULT CURRENT_TIMESTAMP,
   KEY idx_file (file_id),
   KEY idx_name (project_name)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='省重点项目明细'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='省重点项目明细(单位类字段见 skp_project_unit)'
 """
 
-CREATE_TABLE_SKP_FILE_EXTRA = """
-CREATE TABLE IF NOT EXISTS skp_file_extra (
-  id           BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  file_id      BIGINT UNSIGNED NOT NULL              COMMENT '关联 skp_file.id',
-  project_id   BIGINT UNSIGNED NOT NULL              COMMENT '关联 skp_project.id(该行项目)',
-  extra_info   JSON                                  COMMENT '文件特有信息(如 {"合作方式":"合资","联系方式":"xxx"})',
-  created_at   DATETIME      DEFAULT CURRENT_TIMESTAMP,
-  KEY idx_file (file_id),
-  KEY idx_project (project_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文件特有信息(非共性字段,每项目一行 JSON)'
+CREATE_TABLE_SKP_PROJECT_UNIT = """
+CREATE TABLE IF NOT EXISTS skp_project_unit (
+  id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  project_id  BIGINT UNSIGNED NOT NULL      COMMENT '关联 skp_project.id',
+  unit_header VARCHAR(64)   DEFAULT ''      COMMENT '单位表头(文件列名原文,见 parser/field_mapping.HEADER_ALIASES)',
+  unit_name   VARCHAR(255)  DEFAULT ''      COMMENT '单位名称',
+  unit_id     BIGINT UNSIGNED DEFAULT 0     COMMENT '单位ID(外部单位库,由 get_company_id 提供)',
+  created_at  DATETIME      DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_project (project_id),
+  KEY idx_unit_id (unit_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目相关单位(表头+单位名称+单位ID)'
 """
 
 CREATE_TABLE_SKP_NOTICE = """
@@ -112,28 +111,28 @@ CREATE TABLE IF NOT EXISTS skp_category_declared (
 INSERT_FILE_SQL = """
 INSERT INTO skp_file
     (file_name, file_path, file_type, gofast_url, area_id, year,
-     file_size, file_hash, status, full_field_status)
+     file_size, file_hash, status)
 VALUES
     (%(file_name)s, %(file_path)s, %(file_type)s, %(gofast_url)s, %(area_id)s, %(year)s,
-     %(file_size)s, %(file_hash)s, %(status)s, %(full_field_status)s)
+     %(file_size)s, %(file_hash)s, %(status)s)
 """
 
 INSERT_PROJECT_SQL = """
 INSERT INTO skp_project
-    (file_id, area_id, project_name, construction_unit, location,
+    (file_id, area_id, project_name, location,
      total_investment, annual_investment, start_year, end_year,
-     construction_content, responsible_unit, project_owner, source_row,
-     project_type, category, annual_goal, raw_fields, remark)
+     construction_content, source_row,
+     project_type, category, annual_goal, raw_fields, extra_info, remark)
 VALUES
-    (%(file_id)s, %(area_id)s, %(project_name)s, %(construction_unit)s, %(location)s,
+    (%(file_id)s, %(area_id)s, %(project_name)s, %(location)s,
      %(total_investment)s, %(annual_investment)s, %(start_year)s, %(end_year)s,
-     %(construction_content)s, %(responsible_unit)s, %(project_owner)s, %(source_row)s,
-     %(project_type)s, %(category)s, %(annual_goal)s, %(raw_fields)s, %(remark)s)
+     %(construction_content)s, %(source_row)s,
+     %(project_type)s, %(category)s, %(annual_goal)s, %(raw_fields)s, %(extra_info)s, %(remark)s)
 """
 
-INSERT_EXTRA_SQL = """
-INSERT INTO skp_file_extra (file_id, project_id, extra_info)
-VALUES (%(file_id)s, %(project_id)s, %(extra_info)s)
+INSERT_PROJECT_UNIT_SQL = """
+INSERT INTO skp_project_unit (project_id, unit_header, unit_name, unit_id)
+VALUES (%(project_id)s, %(unit_header)s, %(unit_name)s, %(unit_id)s)
 """
 
 INSERT_NOTICE_SQL = """
@@ -155,35 +154,42 @@ PROJECT_EXTRA_COLUMNS = [
     ("project_type", "VARCHAR(32) NOT NULL DEFAULT '' COMMENT '建设性质:新建/续建/竣工投产/预备/储备'"),
     ("category", "VARCHAR(128) NOT NULL DEFAULT '' COMMENT '行业分类(如 工业-电子信息)'"),
     ("annual_goal", "VARCHAR(512) NOT NULL DEFAULT '' COMMENT '年度工作目标(前期研究阶段项目)'"),
-    ("project_owner", "VARCHAR(255) NOT NULL DEFAULT '' COMMENT '项目业主/业主单位(业主方)'"),
     ("remark", "VARCHAR(255) NOT NULL DEFAULT '' COMMENT '备注(疑似分类/单位字段行标记,人工核查)'"),
+    ("extra_info", "JSON NULL COMMENT '文件特有信息(如 {\"合作方式\":\"合资\",\"联系方式\":\"xxx\"}),原 skp_file_extra.extra_info'"),
 ]
-FILE_EXTRA_COLUMNS = [
-    ("full_field_status", "JSON NULL COMMENT 'full_field 宽松规则统计(按 sheet):relax/full/total/hinted/plain/biz_fields,供人工分析'"),
-]
-
+# 单位类字段(取值仍来自解析层,见 parser/field_mapping.UNIT_FIELDS)
+# → 单独入 skp_project_unit(单位表头 + 单位名称),不再写入 skp_project
+_UNIT_FIELDS = ('construction_unit', 'project_owner', 'responsible_unit')
+# 缺省单位表头(解析层未记录来源表头时兜底,取 field_mapping.HEADER_ALIASES 各组标准名)
+_UNIT_DEFAULT_HEADERS = {
+    'construction_unit': '建设单位',
+    'project_owner': '项目业主',
+    'responsible_unit': '责任单位',
+}
 _MAX_VARCHAR = 255
 _FILE_UPDATE_FIELDS = {
     'file_name', 'file_path', 'file_type', 'gofast_url',
-    'area_id', 'year', 'file_size', 'file_hash', 'status', 'full_field_status',
+    'area_id', 'year', 'file_size', 'file_hash', 'status',
 }
 
 
 class AsyncDB:
     """异步 MySQL 工具类:平台选库 + 建表/入库/查询/更新。"""
 
-    def __init__(self, minsize: int = 1, maxsize: int = 5) -> None:
+    def __init__(self, minsize: int = 1, maxsize: int = 5, dbkey:str='') -> None:
         self._pool: Optional[aiomysql.Pool] = None
         self.minsize = minsize
         self.maxsize = maxsize
+        self.dbkey = dbkey
 
     # ---------- 生命周期 ----------
 
     @staticmethod
-    def get_db_config() -> Dict[str, Any]:
+    def get_db_config(key) -> Dict[str, Any]:
         """根据当前操作系统返回数据库配置:Windows → local,Linux 等 → db252。"""
         system = platform.system()
-        key = 'local' if system == 'Windows' else 'db252'
+        if not key:
+            key = 'local' if system == 'Windows' else 'db252'
         if key not in mysql:
             raise ValueError(f"未找到数据库配置: {key}")
         return mysql[key]
@@ -192,7 +198,7 @@ class AsyncDB:
         """创建连接池(幂等),返回自身便于链式调用。"""
         if self._pool is not None:
             return self
-        cfg = self.get_db_config()
+        cfg = self.get_db_config(self.dbkey)
         self._pool = await aiomysql.create_pool(
             host=cfg['host'],
             port=cfg['port'],
@@ -263,22 +269,41 @@ class AsyncDB:
     # ---------- 建表 ----------
 
     async def init_db(self) -> None:
-        """创建 skp_file、skp_project 表(IF NOT EXISTS,可重复执行),并迁移补充新增列。"""
+        """创建 skp_file、skp_project、skp_project_unit 等表(IF NOT EXISTS,可重复执行),
+        迁移补充新增列,并废弃删除历史遗留的 skp_file_extra 表(其 extra_info 已并入 skp_project)。"""
 
         async def _run(conn: Any) -> None:
             async with conn.cursor() as cur:
                 await cur.execute(CREATE_TABLE_SKP_FILE)
                 await cur.execute(CREATE_TABLE_SKP_PROJECT)
-                await cur.execute(CREATE_TABLE_SKP_FILE_EXTRA)
+                await cur.execute(CREATE_TABLE_SKP_PROJECT_UNIT)
                 await cur.execute(CREATE_TABLE_SKP_NOTICE)
                 await cur.execute(CREATE_TABLE_SKP_CATEGORY_DECLARED)
                 for column, ddl in PROJECT_EXTRA_COLUMNS:
                     await self._ensure_column(cur, 'skp_project', column, ddl)
-                for column, ddl in FILE_EXTRA_COLUMNS:
-                    await self._ensure_column(cur, 'skp_file', column, ddl)
+                # full_field_status 已废弃:统计不再入库,删除遗留列
+                await self._drop_column_if_exists(cur, 'skp_file', 'full_field_status')
+                # 单位类列已迁出 skp_project(改存 skp_project_unit),删除遗留列
+                for column in _UNIT_FIELDS:
+                    await self._drop_column_if_exists(cur, 'skp_project', column)
+                # skp_file_extra 已废弃:extra_info 已并入 skp_project,删除遗留表
+                # await cur.execute("DROP TABLE IF EXISTS skp_file_extra")
 
         await self._with_conn(_run, commit=True)
-        logger.info("数据库表初始化完成(skp_file/skp_project/skp_file_extra/skp_notice/skp_category_declared)")
+        logger.info("数据库表初始化完成"
+                    "(skp_file/skp_project/skp_project_unit/skp_notice/skp_category_declared)")
+
+    @staticmethod
+    async def _drop_column_if_exists(cur: Any, table: str, column: str) -> None:
+        """检查列是否存在,存在则 ALTER 删除(用于废弃字段的表结构演进)。"""
+        await cur.execute(
+            "SELECT COUNT(*) AS n FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+            (table, column))
+        row = await cur.fetchone()
+        if row and int(row['n']) > 0:
+            await cur.execute(f"ALTER TABLE `{table}` DROP COLUMN `{column}`")
+            logger.info(f"表 {table} 已删除废弃列 {column}")
 
     @staticmethod
     async def _ensure_column(cur: Any, table: str, column: str, ddl: str) -> None:
@@ -305,9 +330,9 @@ class AsyncDB:
         return await self._with_conn(_run, commit=True)
 
     async def insert_projects(self, file_id: int, projects: List[Dict[str, Any]]) -> int:
-        """插入项目记录(同一 file_id)及其文件特有信息,返回插入条数。
+        """插入项目记录(同一 file_id),返回插入条数。无项目名称的行自动跳过。
 
-        逐条插入以获取各项目 id,供 skp_file_extra 关联;无项目名称的行自动跳过。
+        项目行的单位类字段(建设单位/项目业主/责任单位)另存 skp_project_unit。
         """
         count = 0
 
@@ -319,10 +344,7 @@ class AsyncDB:
                         logger.warning(f"file_id={file_id} 存在无项目名称的行,已跳过")
                         continue
                     await cur.execute(INSERT_PROJECT_SQL, _normalize_project(file_id, project))
-                    project_id = int(cur.lastrowid)
-                    extra = _normalize_extra(file_id, project_id, project.get('extra_fields'))
-                    if extra:
-                        await cur.execute(INSERT_EXTRA_SQL, extra)
+                    await self._insert_project_units(cur, int(cur.lastrowid), project)
                     count += 1
             return count
 
@@ -330,7 +352,7 @@ class AsyncDB:
 
     async def save_file_with_projects(self, file_data: Dict[str, Any],
                                       projects: List[Dict[str, Any]]) -> Optional[int]:
-        """单文件一个事务:先插入文件记录,再逐条插入项目记录及其特有信息。
+        """单文件一个事务:先插入文件记录,再逐条插入项目记录(含项目单位)。
 
         成功返回 file_id;失败回滚并返回 None。
         """
@@ -346,10 +368,7 @@ class AsyncDB:
                         logger.warning(f"file_id={file_id} 存在无项目名称的行,已跳过")
                         continue
                     await cur.execute(INSERT_PROJECT_SQL, _normalize_project(file_id, project))
-                    project_id = int(cur.lastrowid)
-                    extra = _normalize_extra(file_id, project_id, project.get('extra_fields'))
-                    if extra:
-                        await cur.execute(INSERT_EXTRA_SQL, extra)
+                    await self._insert_project_units(cur, int(cur.lastrowid), project)
             return file_id
 
         try:
@@ -358,6 +377,14 @@ class AsyncDB:
             logger.error(f"文件 {file_data.get('file_name', '')} 入库失败,已回滚: {ex}",
                          exc_info=True)
             return None
+
+    @staticmethod
+    async def _insert_project_units(cur: Any, project_id: int, project: Dict[str, Any]) -> int:
+        """项目行的单位类字段(表头+单位名称)写入 skp_project_unit,返回写入行数。"""
+        rows = await _build_project_unit_rows(project_id, project)
+        for row in rows:
+            await cur.execute(INSERT_PROJECT_UNIT_SQL, row)
+        return len(rows)
 
     async def save_category_declared(self, file_id: int,
                                      declared_sum: Dict[str, int],
@@ -424,6 +451,15 @@ class AsyncDB:
         rows = await self.query("SELECT COUNT(*) AS total FROM skp_project")
         return int(rows[0]['total']) if rows else 0
 
+    # async def get_company_id(self, unit_name: str) -> int:
+    #     """按单位名称获取单位ID(写入 skp_project_unit.unit_id),具体实现待补充。
+    #     获取公司id
+    #     :param company_name: 公司名称
+    #     :return: 公司id
+    #     TODO: 待补充——查询/登记单位库并返回单位ID;未命中时的创建策略由调用方约定。
+    #     """
+    #     raise NotImplementedError("get_company_id 待实现")
+
     # ---------- 更新 ----------
 
     async def update_file(self, file_id: int, **fields: Any) -> bool:
@@ -451,8 +487,9 @@ class AsyncDB:
     async def delete_file_data(self, file_hash: str) -> Dict[str, int]:
         """按文件 SHA-256 删除该文件及其全部关联数据(单事务,失败自动回滚)。
 
-        删除顺序:先子表(skp_file_extra/skp_project/skp_notice/skp_category_declared),
-        后父表 skp_file。返回各表删除行数 {'file','project','extra','notice','category_declared'};
+        删除顺序:先子表(skp_project_unit/skp_project/skp_notice/skp_category_declared),
+        后父表 skp_file。返回各表删除行数
+        {'file','project','project_unit','notice','category_declared'};
         文件不存在时各表均为 0。
         """
 
@@ -462,11 +499,18 @@ class AsyncDB:
                 # await cur.execute("SELECT id FROM skp_file WHERE file_path = %s", (file_hash,))
                 row = await cur.fetchone()
                 if not row:
-                    return {'file': 0, 'project': 0, 'extra': 0, 'notice': 0, 'category_declared': 0}
+                    return {'file': 0, 'project': 0, 'project_unit': 0,
+                            'notice': 0, 'category_declared': 0}
                 file_id = int(row['id'])
                 deleted: Dict[str, int] = {}
+                # skp_project_unit 经 skp_project.id 关联,先删单位行再删项目行
+                await cur.execute(
+                    "DELETE u FROM skp_project_unit u "
+                    "JOIN skp_project p ON p.id = u.project_id WHERE p.file_id = %s",
+                    (file_id,))
+                deleted['project_unit'] = cur.rowcount
                 # 表名均为代码内常量,无注入风险
-                for table, key in (('skp_file_extra', 'extra'), ('skp_project', 'project'),
+                for table, key in (('skp_project', 'project'),
                                    ('skp_notice', 'notice'), ('skp_category_declared', 'category_declared')):
                     await cur.execute(f"DELETE FROM {table} WHERE file_id = %s", (file_id,))
                     deleted[key] = cur.rowcount
@@ -492,13 +536,11 @@ def _normalize_file(data: Dict[str, Any]) -> Dict[str, Any]:
         'file_size': int(data.get('file_size') or 0),
         'file_hash': data.get('file_hash') or '',
         'status': int(data.get('status', 1)),
-        # full_field 统计(JSON 字符串,如 {"sheets": {...}});None → 不入列
-        'full_field_status': data.get('full_field_status'),
     }
 
 
 def _normalize_project(file_id: int, project: Dict[str, Any]) -> Dict[str, Any]:
-    """清洗项目记录字段,补齐默认值;raw_fields(dict)序列化为 JSON。"""
+    """清洗项目记录字段,补齐默认值;raw_fields/extra_fields(dict)序列化为 JSON。"""
     raw = project.get('raw_fields')
     if raw:
         try:
@@ -511,29 +553,47 @@ def _normalize_project(file_id: int, project: Dict[str, Any]) -> Dict[str, Any]:
         'file_id': int(file_id),
         'area_id': int(project.get('area_id') or 0),
         'project_name': (project.get('project_name') or '').strip()[:_MAX_VARCHAR],
-        'construction_unit': (project.get('construction_unit') or '')[:255],
         'location': (project.get('location') or '')[:255],
         'total_investment': float(project.get('total_investment') or 0),
         'annual_investment': float(project.get('annual_investment') or 0),
         'start_year': int(project.get('start_year') or 0),
         'end_year': int(project.get('end_year') or 0),
         'construction_content': project.get('construction_content') or '',
-        'responsible_unit': (project.get('responsible_unit') or '')[:255],
-        'project_owner': (project.get('project_owner') or '')[:255],
         'source_row': int(project.get('source_row') or 0),
         'project_type': (project.get('project_type') or '')[:32],
         'category': (project.get('category') or '')[:128],
         'annual_goal': (project.get('annual_goal') or '')[:512],
         'raw_fields': raw_json,
+        'extra_info': _serialize_extra(project.get('extra_fields')),
         'remark': (project.get('remark') or '')[:255],
     }
 
 
-def _normalize_extra(file_id: int, project_id: int,
-                     extra_fields: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
-    """把项目行的文件特有信息组装为 skp_file_extra 单行(extra_info 为 JSON)。
+async def _build_project_unit_rows(project_id: int, project: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """项目 dict → skp_project_unit 行(单位表头 + 单位名称);单位名为空不写行。
 
-    空字段过滤;无特有信息返回 None(不产生 extra 行)。
+    表头取解析层记录的别名原文(project['unit_headers'],如 "项目法人"),
+    缺省回退该组标准名(_UNIT_DEFAULT_HEADERS);unit_id 经 get_company_id 实时查询。
+    """
+    headers = project.get('unit_headers') or {}
+    rows: List[Dict[str, Any]] = []
+    for field in _UNIT_FIELDS:
+        unit_name = str(project.get(field) or '').strip()
+        if not unit_name:
+            continue
+        rows.append({
+            'project_id': int(project_id),
+            'unit_header': str(headers.get(field) or _UNIT_DEFAULT_HEADERS[field])[:64],
+            'unit_name': unit_name[:255],
+            'unit_id': await get_company_id(unit_name[:255]),
+        })
+    return rows
+
+
+def _serialize_extra(extra_fields: Optional[Dict[str, Any]]) -> Optional[str]:
+    """把项目行的文件特有信息序列化为 extra_info JSON 字符串。
+
+    空字段过滤;无特有信息返回 None(列置 NULL)。
     """
     cleaned = {}
     for name, value in (extra_fields or {}).items():
@@ -543,11 +603,7 @@ def _normalize_extra(file_id: int, project_id: int,
             cleaned[field_name] = field_value
     if not cleaned:
         return None
-    return {
-        'file_id': int(file_id),
-        'project_id': int(project_id),
-        'extra_info': json.dumps(cleaned, ensure_ascii=False),
-    }
+    return json.dumps(cleaned, ensure_ascii=False)
 
 
 def _normalize_notice(notice: Dict[str, Any]) -> Dict[str, Any]:
