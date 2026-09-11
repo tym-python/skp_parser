@@ -64,14 +64,18 @@ def iter_blocks(file_path: str) -> Iterator[Tuple[str, Any]]:
             raise RuntimeError(f"docx 损坏且 lxml 兜底失败: {lex}") from ex
 
     # python-docx 正常路径:还原 body 子元素顺序
-    from docx.table import Table
+    from docx.table import Table, _Cell
     from docx.text.paragraph import Paragraph
     for child in document.element.body.iterchildren():
         if child.tag.endswith('}p'):
             yield 'p', Paragraph(child, document).text
         elif child.tag.endswith('}tbl'):
             table = Table(child, document)
-            yield 'tbl', [[cell.text for cell in row.cells]
+            # 按逻辑格(tc)读取而非网格展开(row.cells):后者按最大列 span 展开、
+            # 合并值跨列重复,表头行与数据行 span 不同时(如 南京 2022 表头 10 逻辑列、
+            # 数据行"序号"占 2 网格列)逻辑列错位、字段映射取空。逻辑格与 lxml 兜底
+            # 路径口径一致,合并值只出现一次,表头/数据天然对齐
+            yield 'tbl', [[_Cell(tc, table).text for tc in row._tr.tc_lst]
                           for row in table.rows]
 
 
