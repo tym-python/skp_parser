@@ -522,6 +522,7 @@ class BaseParser(ABC):
         # 形态1:单格性质词标题行
         if len(non_empty) == 1:
             value = non_empty[0]
+            # 较完善的type匹配
             mt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
                                 rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
                                 rf'\s*$', value)
@@ -568,8 +569,9 @@ class BaseParser(ABC):
                 # 序号+长文本(如 "2.城区公交站台升级改造:拟对…" 项目内容续行)→ 跳过不产生项目
                 return True
         # 建设性质: "续建项目(597个)" / "计划开工项目(318个)"
-        # m2 = re.match(r'^(新建|续建|在建|计划开工|新开工|竣工|投产|预备|储备|前期)项目?', value)
-        m2 = re.match(rf'^(?P<pt>{PT})(?:项目)?', value)
+        m2 = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+                                rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
+                                rf'\s*$', value)
         if m2:
             context['project_type'] = m2.group('pt')
             return True
@@ -885,16 +887,16 @@ class BaseParser(ABC):
 
         # 性质分组头 + 括号项数(如 "预备(1个)"、"【预备】(4)"、"一、在建（257个）",
         # 贵阳 2026 docx):只设 project_type、不产生项目;性质纯词不入 category
-        m_pt = re.match(
-            rf'^(?P<pt>{PT})\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]\s*$',
-            text)
+        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+                                rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
+                                rf'\s*$', text)
         if m_pt:
             context['project_type'] = m_pt.group('pt')
             return True
 
-        m = re.search(rf'(?P<pt>{PT})', text)
-        if m and len(text) <= 10:
-            context['project_type'] = m.group('pt')
+        # m = re.search(rf'(?P<pt>{PT})', text)
+        # if m and len(text) <= 10:
+        #     context['project_type'] = m.group('pt')
 
         # 纯建设性质标题(如 "投产项目")→ 更新 project_type
         m_type = re.match(rf'^(?P<pt>{PT})项目?$', text)
