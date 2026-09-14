@@ -1,12 +1,13 @@
 ---
 name: skp-parser
-description: 解析给定目录下的文件(含 pdf、docx、xlsx),提取省重点项目及相关详情存入 MySQL 数据库,并将原文件上传 GoFast,入库数据与上传文件通过 file_id 关联。当用户要求解析重点项目文件目录、提取各省重点项目清单、解析项目入库或上传 GoFast 时使用。
+description: 解析给定目录下的文件(含 pdf、docx、xlsx、图片 png/jpg),提取省重点项目及相关详情存入 MySQL 数据库,并将原文件上传 GoFast,入库数据与上传文件通过 file_id 关联。当用户要求解析重点项目文件目录、提取各省重点项目清单、解析项目入库或上传 GoFast 时使用。
 ---
 
 # 省重点项目解析入库
 
-解析指定目录下的 `pdf / docx / xlsx` 文件,提取"省重点项目"名称及相关详情写入 MySQL;
+解析指定目录下的 `pdf / docx / xlsx / 图片(png/jpg/jpeg)` 文件,提取"省重点项目"名称及相关详情写入 MySQL;
 原文件按平台规则上传 GoFast 获得访问 URL;每个项目的入库记录通过 `file_id` 与上传文件关联。
+图片类(单独图片文件、纯图片 docx 内嵌截图)经 PaddleOCR 行级提取后走同一行级兜底(见 OCR 图片节)。
 
 ## 触发场景
 
@@ -26,7 +27,9 @@ skp_parser/
 │   ├── pdf_parser.py        # PDF(pdfplumber,表格优先 + 质量门)
 │   ├── docx_parser.py       # DOCX(python-docx,表格优先)
 │   ├── xlsx_parser.py       # XLSX(openpyxl,遍历全部 sheet)
-│   └── notice_parser.py     # 红头文件(计划通知类)元信息解析
+│   ├── xls_parser.py        # XLS(xlrd,与 xlsx 规则同构)
+│   ├── notice_parser.py     # 红头文件(计划通知类)元信息解析
+│   └── ocr_parser.py        # 图片 OCR 行提取(PaddleOCR):单独图片文件 + 纯图片 docx
 └── util/                    # 通用工具
     ├── db_util.py           # AsyncDB(aiomysql 连接池,平台选库)
     ├── db_config.py         # local / db252 连接配置
@@ -142,7 +145,9 @@ skp_project_unit,存量值不回填,需重现历史单位数据请重跑对应�
   xlsx(xl/)/docx(word/)/pptx(ppt/);rar/7z/gzip 魔数与**非 OOXML 的 zip**
   (改名伪装压缩包)→ 返回 ".zip" 并明确报错不做解析,不再按扩展名兜底交给
   openpyxl/python-docx(曾误报 "openpyxl does not support .docx");
-  扫描入口 collect_files 本身只收 pdf/docx/xlsx 扩展名
+  扫描入口 collect_files 与解析注册表同步收 pdf/docx/xlsx/**图片(png/jpg/jpeg)**
+  (main.SUPPORTED_EXT 与 run_single 同步扩展;分析脚本 batch_test/full_scan
+  维持原扩展名不随动)
 - **表头构造**:合并方向为"上一行(表头行)自身横向合并(父标题,如 "2020年计划" 合并跨列)
   + 下一行短文本子表头(每格 ≤30 字)才合并并下移数据起始行";**概况文字行**
   (如 绵阳 "2025年全市城建工程项目共376个…",长文本/句子)→ 不并入表头、跳过不产生项目;
@@ -192,6 +197,15 @@ skp_project_unit,存量值不回填,需重现历史单位数据请重跑对应�
   曾被括号统计门控放行、落入兜底分支把 名称+内容 整体(90 余字)误设为分类,
   吞掉该条并污染其后全部项目 category(996 条只出 995)。护栏:仅当**序号列为纯
   数字**才短路——"一、续建类" 等分块标题行序号列非数字,照常走 apply_category 识别
+- **无表头项目清单兜底(`_positional_header`,docx/pdf 表格路径 extract_rows_from_table)**:
+  find_header 未命中且无跨页 prev_header_map 时,识别"首行为表名"的清单表(表名行
+  前 3 行内、单格文本命中 项目/工程+名单/清单/列表/目录/总表,如 烟台 2022
+  "2022年市级重点项目名单（建设类）")→ 按列位置默认映射:首列序号(纯数字,容忍
+  "（1）/1、/1." 包裹)不映射、第 2 个非空(非数字/非占位)列 → project_name(须含
+  汉字)、第 3 个 → construction_content(建设规模);护栏:须有 ≥5 行"数字首列+中文
+  名称"数据行,否则整表维持跳过原行为(抄送/空模板/统计表自然排除),命中后记
+  warning 提示"按列位置默认为项目";濮阳 2023 等无表名行清单从第 0 行起。
+  **注意:当前仅 docx/pdf 表格路径生效**(extract_rows_from_table),xlsx 行循环未接入
 - **update_category_context 兜底分支护栏(长度+句读)**:兜底(去序号/括号统计后整段
   当分类名)加双限定——cleaned ≤ FALLBACK_CATEGORY_MAX_LEN(=24)字且不含句子标点
   (，。；;:：,;顿号"、"是枚举、分类名可含,不限定)——名称+内容拼接超长且必含
@@ -479,7 +493,9 @@ skp_project_unit,存量值不回填,需重现历史单位数据请重跑对应�
 (单文本格字段标签/超长段落)、极简表窄化分组 is_group_row_minimal、性质标题行
 group_type_title 同步生效;文本兜底 parse_lines 过滤正文标签行
 (如 "项目名称：…"/"联 系 人：…",不产生项目、不拼入上一项目名)。DOCX 与 PDF 共用
-该表格/文本逻辑(docx_parser/pdf_parser 均走 base_parser)。
+该表格/文本逻辑(docx_parser/pdf_parser 均走 base_parser),含**无表头项目清单
+位置式兜底 `_positional_header`**(表名行识别+序号/名称/规模默认列映射,
+详见"通用:字段映射与清洗"一节)
 
 ### DOCX(`docx_parser.py` + `docx_reader.py`)
 
@@ -490,7 +506,9 @@ group_type_title 同步生效;文本兜底 parse_lines 过滤正文标签行
 - **有表格 → 仅解析表格**(通知/计划文件的清单主体):逐表走公共
   extract_rows_from_table(装饰行/窄化分组/分类上下文等与 xlsx/pdf 共用);
   表前 标题/通知正文、表后 落款/说明 段落不参与解析
-  (python-docx 顶层段落与表格分离,按 body 顺序遍历还原真实次序)
+  (python-docx 顶层段落与表格分离,按 body 顺序遍历还原真实次序);
+  无表格且段落兜底 0 条(清单为截图的纯图片 docx)→ 内嵌图逐张 OCR
+  行级兜底,详见 "OCR 图片" 一节
 - **无表格 → 段落行级兜底 parse_lines(bare=True)**:纯文本清单支持两类——
   序号式(序号行)与 **段落式逐行条目**(如 甘肃名单 "续建项目：…（一）农业水利
   项目 → 每行项目名");bare 模式有**分区信号门控**:出现 性质组头("续建项目：")
@@ -523,6 +541,26 @@ group_type_title 同步生效;文本兜底 parse_lines 过滤正文标签行
   **Excel 默认 sheet 名不设分类**:`^(sheet|table)\s*\d*$`(忽略大小写,含 "Sheet 1"/"Table 1"/
   "Table" 等,导出/复制文件常见——曾整 sheet 项目 category='Table' 入库,如 广东 2021/2026 清单、
   广西(第一批) 173 条);xls 解析器同步处理
+
+### OCR 图片(`ocr_parser.py`)
+
+图片清单以 OCR 文本行进入既有行级兜底,**不新增解析规则**(序号行/分类行/续行拼接
+等与 docx 段落清单一致):
+
+- **两个入口共用同一套逻辑**:
+  - 单独图片文件(.png/.jpg/.jpeg)→ `ImageOcrParser`(parser/__init__ 注册表,
+    经 `parse_file` 分发;main.collect_files 已同步收录,随目录批跑入库);
+  - **纯图片 docx**(无表格、无有效段落文本,项目清单以截图嵌入,如 天津西青/临港/
+    松江/湖南 2023)→ docx_parser 在段落兜底 0 条后,按 body 顺序
+    (`docx_image_blocks`,document.xml 的 r:embed 引用序 + rels 映射)抽出全部内嵌图
+    → 逐张 OCR → `parse_lines(ocr_lines, context)` 续接段落路径,有产出记 info
+    "纯图片 docx,OCR 解析 N 条";有表格或有段落产出的常规 docx 不触发
+- **OCR 引擎**:PaddleOCR(懒加载单例,首个图片触发,初始化约数秒;
+  lang='ch',关闭文档方向/去扭曲/文本行方向三个分类器)
+- **文本行重组**:`ocr_image_bytes` 按 y 中心分组成行(阈值 max(8, 行高×0.6),
+  滚动更新行中心)、行内按 x 排序空格连接;图片解码失败/面积 <1000/OCR 异常/
+  无文本 → 返回空列表(记 warning,不抛异常、不中断)
+- 无文本图片 → 该文件 0 条,记 warning 提示"疑似非清单图片"
 
 ### 通知类文件(`notice_parser.py`)
 
