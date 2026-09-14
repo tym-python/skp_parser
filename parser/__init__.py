@@ -34,7 +34,7 @@ def get_parser(ext: str) -> BaseParser:
 def detect_real_ext(file_path: str) -> str:
     """按文件头探测真实格式,覆盖 扩展名与内容不符 的情况(如 .xlsx 实为旧版 xls)。
 
-    - OLE2 魔数(D0CF11E0)→ .xls
+    - OLE2 魔数(D0CF11E0)→ 按流名区分 .doc(WordDocument 流)/ .xls(旧版 Excel)
     - ZIP 魔数(PK)→ .xlsx
     - 其他 → 按扩展名
     """
@@ -42,7 +42,10 @@ def detect_real_ext(file_path: str) -> str:
         with open(file_path, 'rb') as f:
             head = f.read(8)
         if head.startswith(b'\xd0\xcf\x11\xe0'):
-            return '.xls'
+            # 目录扇区(流名 UTF-16LE)位置不定(常见于文件尾部)→ 整文件扫 WordDocument 流
+            with open(file_path, 'rb') as f:
+                return '.doc' if 'WordDocument'.encode('utf-16le') in f.read() \
+                    else '.xls'
         if head.startswith(b'PK'):
             # docx/xlsx/pptx 同为 ZIP(PK 魔数):按 zip 内容区分——
             # 不能按魔数一刀切,否则 .docx 会被误判给 openpyxl 报

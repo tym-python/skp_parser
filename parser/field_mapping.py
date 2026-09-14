@@ -21,14 +21,14 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'location': ('建设地点', '项目地点', '建设地址', '所在市县', '所在地', '所在盟市'),
     'total_investment': ('总投资', '项目总投资', '总投资额', '投资额'),
     'annual_investment': ('年度计划投资', '年度投资', '本年度计划投资', '年计划投资', '计划投资', '预计投资', '投资计划', '计划完成投资'),
-    'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','年工程形象进度目标'),
-    'year_range': ('建设起止年限', '建设起止时间', '建设年限', '建设周期', '起止年限', '计划工期'),
+    'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','年工程形象进度目标','工程形象进度'),
+    'year_range': ('建设起止年限', '建设起止时间', '建设年限', '建设周期', '起止年限', '计划工期','计划建设期限'),
     'start_year': ('开工年份', '开工时间', '开工年度', '计划开工', '开工'),
     'end_year': ('竣工年份', '竣工时间', '完工年份', '计划竣工', '竣工'),
     'construction_content': ('建设内容', '主要建设内容', '建设规模', '建设规模和内容',
                              '建设规模及内容', '建设规模及主要内容', '拟建设规模', '项目内容', '项目简介'),
     'responsible_unit': ('责任单位', '牵头单位', '项目主管单位', '监管单位', '主管部门', '主管单位'),
-    'category': ('项目类别', '产业类别', '项目分类', '项目大类', '行业分类', '项目类型', '项目领域', '领域分类', '所属行业', '行业类别', '九大领域'),
+    'category': ('项目类别', '产业类别', '项目分类', '项目大类', '行业分类', '项目类型', '项目领域', '领域分类', '所属行业', '行业类别', '九大领域','领域'),
     'project_type': ('建设性质', '建设阶段', '建设批次'),
 }
 
@@ -205,7 +205,8 @@ def map_row(header_map: Dict[int, str], row: List[Any],
     project: Dict[str, Any] = {}
     for idx, cell in enumerate(row):
         field = header_map.get(idx)
-        header_text = str(headers[idx] or '').replace('\n', '').strip() if headers else ''
+        header_text = str(headers[idx] or '').replace('\n', '').strip() \
+            if headers and idx < len(headers) else ''
         if field is None:
             # 未映射列:文件特有信息,如 内蒙古表的"合作方式"(序号列/空表头除外)
             if header_text and header_text.lower() not in SKIP_EXTRA_HEADERS:
@@ -219,7 +220,7 @@ def map_row(header_map: Dict[int, str], row: List[Any],
                 if header_text:
                     project.setdefault('extra_fields', {})[header_text] = str(cell or '').strip()
                 continue
-            unit_scale = header_unit(headers[idx]) if headers else ''
+            unit_scale = header_unit(headers[idx]) if headers and idx < len(headers) else ''
             project[field] = clean_amount(cell, unit_scale=unit_scale)
         elif field == 'year_range':
             start, end = extract_years(cell)

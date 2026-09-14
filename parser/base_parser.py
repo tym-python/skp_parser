@@ -1039,7 +1039,7 @@ class BaseParser(ABC):
             m_typ = re.match(rf'^(?P<pt>{PT})\S*项目?$', cleaned)
             if m_typ:
                 context['project_type'] = m_typ.group('pt')
-            elif re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned):
+            elif re.match(r'^.{0,3}项目(总\s*计|合\s*计|小\s*计)', cleaned):
                 return True  # 汇总行,跳过不产生项目、不设分类
             elif cleaned and len(cleaned) <= 16 and BaseParser._looks_like_category(cleaned):
                 BaseParser._set_category(context, cleaned)
