@@ -22,7 +22,7 @@ from util.log_util import get_logger
 
 logger = get_logger(__file__)
 
-SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', 'xls'}
+SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', 'xls','.png', '.jpg', '.jpeg'}
 
 
 async def batch_test(file_type: str, sub_dir: str, upload: bool, dbkey:str='local') -> None:
