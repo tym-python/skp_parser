@@ -63,9 +63,11 @@ class DocxParser(BaseParser):
         context: Dict[str, str] = {}  # 分类上下文在表格间共享
         prev_header: Optional[Dict[int, str]] = None
         paragraph_lines: List[str] = []
+        has_table = False
 
         for kind, payload in iter_blocks(file_path):
             if kind == 'tbl':
+                has_table = True
                 # 表格 = 项目清单主体:表前通知正文/标题段落、表后落款说明一律
                 # 不参与解析(见类注释),段落路径仅保留"整文档无表格"的纯文本清单
                 rows = [self._clean_row(row) for row in payload]
@@ -81,9 +83,26 @@ class DocxParser(BaseParser):
                     if text:
                         paragraph_lines.append(text)
 
-        if not projects and paragraph_lines:
-            # 整文档无表格 → 纯文本清单:全部段落走行级兜底(bare:段落式逐行项目
-            # 条目,如 甘肃 名单 "续建项目：…（一）农业水利项目 → 项目名" 逐行)
-            projects.extend(self.parse_lines(paragraph_lines, context, bare=True))
+        if has_table:
+            # 表格 = 项目清单主体,段落不参与解析(见类注释)
+            pass
+        else:
+            # 无表格:先纯文本清单兜底(bare:段落式逐行项目条目,如 甘肃 名单
+            # "续建项目：…（一）农业水利项目 → 项目名" 逐行)
+            if paragraph_lines:
+                projects.extend(self.parse_lines(paragraph_lines, context, bare=True))
+            # 段落路径 0 条(纯图片清单 docx,正文仅引言/概况段,项目为截图,
+            # 如 天津西青/临港/松江/湖南 2023)→ 按 body 顺序逐图 OCR 行级兜底,
+            # 与单独图片文件共用 ocr_parser 逻辑;有产出的常规 docx 不触发
+            if not projects:
+                from parser.ocr_parser import docx_image_blocks, ocr_image_bytes
+                for img in docx_image_blocks(file_path):
+                    ocr_lines = ocr_image_bytes(img)
+                    if ocr_lines:
+                        projects.extend(self.parse_lines(ocr_lines, context))
+                if projects:
+                    logger.info(f"{file_path}: 纯图片 docx,OCR 解析 {len(projects)} 条")
+                else:
+                    logger.warning(f"{file_path}: 无表格且段落/OCR 均未解析到项目")
 
         return self.filter_blank_projects(projects)

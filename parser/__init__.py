@@ -10,6 +10,7 @@ from typing import Dict, List, Type
 
 from parser.base_parser import BaseParser
 from parser.docx_parser import DocxParser
+from parser.ocr_parser import ImageOcrParser
 from parser.pdf_parser import PdfParser
 from parser.xls_parser import XlsParser
 from parser.xlsx_parser import XlsxParser
@@ -19,6 +20,9 @@ PARSER_REGISTRY: Dict[str, Type[BaseParser]] = {
     '.docx': DocxParser,
     '.xlsx': XlsxParser,
     '.xls': XlsParser,
+    '.png': ImageOcrParser,
+    '.jpg': ImageOcrParser,
+    '.jpeg': ImageOcrParser,
 }
 
 
