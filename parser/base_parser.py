@@ -185,6 +185,8 @@ class BaseParser(ABC):
             if len(texts) == 1 and BaseParser.POSITIONAL_TITLE_RE.search(texts[0]):
                 title_idx = idx
                 break
+        if title_idx == -1:  # 不满足 表格title条件
+            return None
         name_col = scale_col = None
         data_cnt = 0
         for row in rows[title_idx + 1:title_idx+21]:
