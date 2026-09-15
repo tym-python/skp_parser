@@ -18,7 +18,7 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'project_name': ('项目名称', '项目名', '工程名称', '工程名', '名称', '项目单位及名称'),
     'construction_unit': ('建设单位', '实施单位', '项目单位', '项目法人', '建设主体', '法人单位','项目实施主体'),
     'project_owner': ('项目业主', '业主单位', '业主'),
-    'location': ('建设地点', '项目地点', '建设地址', '所在市县', '所在地', '所在盟市'),
+    'location': ('建设地点', '项目地点', '建设地址', '所在市县', '所在地', '所在盟市','项目位置'),
     'total_investment': ('总投资', '项目总投资', '总投资额', '投资额'),
     'annual_investment': ('年度计划投资', '年度投资', '本年度计划投资', '年计划投资', '计划投资', '预计投资', '投资计划', '计划完成投资'),
     'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','年工程形象进度目标','工程形象进度'),
@@ -71,17 +71,35 @@ def match_field_with_alias(header: Any) -> Optional[Tuple[str, str]]:
     text = str(header or '').strip().lower().replace('\n', '').replace(' ', '').replace('-', '')
     if not text:
         return None
-    # 年投资计划合并表头(父-子)组合判定:父标题含 投资计划/计划投资/年度投资,
-    # 子表头为 主要建设内容/新增生产能力/小计(如 广东 "2021年投资计划-主要建设内容")。
+    # 年投资计划合并表头(父-子)组合判定:父标题含 投资计划/计划投资/年度投资/
+    # 资金来源/推进计划,子表头为 主要建设内容/新增生产能力/小计/总投资/形象进度
+    # (如 广东 "2021年投资计划-主要建设内容"、宿迁 "2024年计划投资-计划总投资"、
+    # "项目资金来源-计划总投资"、"2024年推进计划-整体形象进度")。
     # 父-子拼接后连字符已去除,按词组合判定;须先于通用别名
     # (否则 "投资计划" 子串先命中 annual_investment)
-    if re.search(r'(投资计划|计划投资|年度投资)', text):
+    if re.search(r'(投资计划|计划投资|年度投资|资金来源|推进计划)', text):
         if '主要建设内容' in text or '建设内容' in text:
             return 'annual_goal', ''          # 子=主要建设内容 → 年度建设内容
         if '新增生产' in text or '生产能力' in text:
             return None                       # 子=新增生产能力 → 非金额,留 extra
         if '小计' in text or '合计' in text:
             return 'annual_investment', ''    # 子=小计 → 年度计划投资
+        if '总投资' in text:
+            # 父=资金来源 → 总投资;父=计划投资类 → 年投资(其"计划总投资"是年度口径)
+            return ('total_investment', '') if '资金来源' in text \
+                else ('annual_investment', '')
+        if '形象' in text:
+            return 'annual_goal', ''          # 子=整体形象进度/形象进度 → 年度工作目标
+        # 父级模式命中但子表头非上述已知映射目标:去掉 父级词+数字年月 后仍有剩余
+        # (即 "父-子" 组合的子表头,如 资金构成明细 省级以上补助/市财政/社会资本、
+        # 季度 第一季度)→ 该列留 extra(return None),防止 fall through 通用别名把
+        # "2024年计划投资市财政" 等误配 annual_investment(资金明细非年投资,仅
+        # "计划总投资"小计列才是);单纯父级表头("2021年计划投资" 去父级词+数字后
+        # 为空)residual 为空 → 仍 fall through 通用别名,广东 投资计划列不受影响
+        residual = re.sub(r'(投资计划|计划投资|年度投资|资金来源|推进计划)', '', text)
+        residual = re.sub(r'[0-9年月日.\-]', '', residual)
+        if residual:
+            return None
     for field, aliases in HEADER_ALIASES.items():
         for alias in aliases:
             if alias in _EXACT_ALIASES:

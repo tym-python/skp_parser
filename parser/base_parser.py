@@ -726,6 +726,56 @@ class BaseParser(ABC):
         return headers, header_idx
 
     @staticmethod
+    def merge_grid_header_rows(rows: List[List[Any]],
+                               grid: List[List[Tuple[int, int]]],
+                               header_idx: int
+                               ) -> tuple[Optional[List[Any]], int]:
+        """两行表头网格合并(docx 逻辑格表,父行含横向合并 span>1)。
+
+        场景(宿迁中心城市 docx 等):表头第 1 行父标题"项目资金来源"合并跨
+        7 列、"2024年计划投资"跨 7 列,第 2 行为子表头行(计划总投资/省级以上
+        补助/…/整体形象进度/第一季度…)——find_header 只认第 1 行时,"计划总投资"
+        等子表头列丢失映射、子行被当数据行。按子行各逻辑格的网格 offset 找父行
+        覆盖它的合并格,补 "父-子" 表头("2024年计划投资-计划总投资"),子行升为
+        表头行、数据起始行后移(与 xlsx merge_header_rows 的子表头分支同口径,
+        但 docx 无 merged_ranges,改用 gridSpan 网格坐标对齐)。
+        护栏:父行在前 3 行且存在 span>1;子行首格空、非空格全为短文本(≤30 字)
+        且含 计划投资/投资/目标/内容/进度/形象/时间/地点 词;返回 (新表头行, 子行
+        索引),不满足返回 (None, 原 header_idx) 保持原行为。
+        """
+        if header_idx >= 2 or header_idx + 1 >= len(rows) \
+                or header_idx + 1 >= len(grid):
+            return None, header_idx
+        parent_row, sub_row = rows[header_idx], rows[header_idx + 1]
+        p_grid, s_grid = grid[header_idx], grid[header_idx + 1]
+        if len(p_grid) != len(parent_row) or len(s_grid) != len(sub_row) \
+                or not any(sp > 1 for _, sp in p_grid):
+            return None, header_idx
+        sub_texts = [str(c or '').strip() for c in sub_row]
+        if sub_texts and sub_texts[0]:
+            return None, header_idx
+        non_empty = [t for t in sub_texts if t]
+        if not non_empty or any(len(t) > 30 for t in non_empty) \
+                or not any(re.search(r'(计划投资|投资|目标|内容|进度|形象|时间|地点)', t)
+                           for t in non_empty):
+            return None, header_idx
+        p_cells: List[Tuple[int, int, str]] = []
+        for (off, sp), c in zip(p_grid, parent_row):
+            p_cells.append((off, sp, str(c or '').strip()))
+        merged = [str(c or '') for c in sub_row]
+        for col, ((off, sp), t) in enumerate(zip(s_grid, sub_texts)):
+            pt = ''
+            for po, sp_, ptext in p_cells:
+                if po <= off < po + sp_:
+                    pt = ptext
+                    break
+            if not t:
+                merged[col] = pt  # 子空格继承父表头(序号/项目名称/责任单位 等)
+            elif pt and pt not in t:
+                merged[col] = f"{pt}-{t}"
+        return merged, header_idx + 1
+
+    @staticmethod
     def _trim_org_fragment(name: str) -> str:
         """清洗项目名中的机构碎片(pdfplumber 表格垂直错位把相邻格并入名称列)。
 
@@ -1368,6 +1418,24 @@ class BaseParser(ABC):
         """
         projects: List[Dict[str, Any]] = []
         context = context if context is not None else {}
+        # 两行表头网格合并(父行 span>1 + 子表头行,如 宿迁 项目资金来源/2024年计划
+        # 投资 合并跨列):按网格 offset 补 "父-子" 表头,子行升为表头行;无 span
+        # 的表(pdf/xlsx/普通 docx)不触发,逐行行为零变化。find_header 用合并后
+        # 表头须命中 ≥2 字段,否则回滚原行(防拆词/装饰行误当子表头)
+        grid: Optional[List[List[Tuple[int, int]]]] = None
+        if isinstance(rows, tuple):  # docx with_grid: (rows, grid)
+            rows, grid = rows
+        if grid:
+            merged_hdr, hdr_idx = BaseParser.merge_grid_header_rows(
+                rows, grid, 0)
+            if merged_hdr is not None:
+                cand = [merged_hdr] + rows[1:hdr_idx] + rows[hdr_idx + 1:]
+                hm_cand, _ = BaseParser.find_header(cand)
+                if hm_cand and len(hm_cand) >= 2:
+                    rows = cand
+                    logger.warning(f"两行表头网格合并:表头行升为第 {hdr_idx + 1} 行")
+                else:
+                    grid = None
         # 每表重新定位表头:同文件含多个独立表格且表头不一致时(如 永川 2022
         # 通知——附件一"政府主导"表[建设性质/起止年限/工作目标/责任部门] 与
         # 附件二"前期"表[建设内容/工作计划/牵头部门/配合部门] 列不同),各表表头
@@ -1399,8 +1467,41 @@ class BaseParser(ABC):
         if 'project_name' not in header_map.values():
             logger.info('未匹配到有效header_map')
             return [], None
+        # 拆形态表(宿迁中心城市 docx 等):"项目名称"格跨 2 个网格列,子分类合并行
+        # 的分类格只占 1 列 → 整行多 1 个逻辑格;续行名称格为空 → 名称及后续字段
+        # 整体左移一列(名称落"项目名称"右半列、地点落内容列…)。判定(表级预扫描):
+        # 存在 ≥2 行 "宽度=表内最大行宽、首列数字序号、名称格空、右邻格非空"(续行形态)
+        # 且存在 "宽度<最大行宽、首列数字、名称格非空" 的常规数据行 → 记 split_table;
+        # 无此形态的表不触发,逐行行为零变化。命中行处理见循环内对齐恢复。
+        name_col = next((c for c, f in header_map.items() if f == 'project_name'), None)
+        split_table = False
+        max_w = 0
+        if name_col is not None:
+            max_w = max((len(r) for r in rows if r), default=0)
+            cont_cnt = normal_cnt = 0
+            for r in rows:
+                r0 = str(r[0] or '').strip()
+                if not (r0 and BaseParser._is_number(r0)):
+                    continue
+                nc = str(r[name_col] or '').strip() if name_col < len(r) else ''
+                nx = str(r[name_col + 1] or '').strip() if name_col + 1 < len(r) else ''
+                if len(r) == max_w and not nc and nx:
+                    cont_cnt += 1
+                elif len(r) < max_w and nc:
+                    normal_cnt += 1
+            if cont_cnt >= 2 and normal_cnt:
+                split_table = True
+                logger.warning(
+                    f"检出拆形态表(名称格跨 2 列+子分类合并行):续行 {cont_cnt} 条,恢复行对齐")
         for row_i, row in enumerate(rows[start:], start=1):
             cells = list(row)
+            # 拆形态表行对齐恢复:删除 分类格(首行)/空名称格(续行),名称及后续
+            # 字段右移回表头列位;常规行(少 1 格、名称格非空)不触碰
+            if split_table and name_col is not None and name_col < len(cells):
+                c0 = str(cells[0] or '').strip()
+                nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
+                if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
+                    del cells[name_col]
             if row_i == 14-1:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):

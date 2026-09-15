@@ -5,6 +5,8 @@
   word/document.xml 兜底(lxml 版合并单元格只出现在首格,天然无跨列重复)。
 两者输出同一结构,docx 解析器与通知解析共用:
     iter_blocks(path) -> ('p', text) | ('tbl', rows[][])
+with_grid=True 时 tbl 块附带各逻辑格的 (offset, span) 网格信息(第 3 元素),
+供 两行表头按网格偏移 补父标题(docx_parser);默认关闭,通知解析等零变化。
 """
 
 import re
@@ -46,8 +48,12 @@ def _lxml_blocks(document_xml_root: Any) -> Iterator[Tuple[str, Any]]:
             yield 'tbl', rows
 
 
-def iter_blocks(file_path: str) -> Iterator[Tuple[str, Any]]:
-    """按 body 顺序读取 docx 的段落/表格块。损坏包自动降级 lxml 读取。"""
+def iter_blocks(file_path: str, with_grid: bool = False) -> Iterator[Tuple[str, Any]]:
+    """按 body 顺序读取 docx 的段落/表格块。损坏包自动降级 lxml 读取。
+
+    with_grid: True 时 tbl 块 = (rows, grid),grid 与 rows 等长,每行为该
+    行各逻辑格的 (offset, span) 网格坐标(合并格 span>1,见 w:gridSpan)。
+    """
     import docx
     try:
         document = docx.Document(file_path)
@@ -75,8 +81,23 @@ def iter_blocks(file_path: str) -> Iterator[Tuple[str, Any]]:
             # 合并值跨列重复,表头行与数据行 span 不同时(如 南京 2022 表头 10 逻辑列、
             # 数据行"序号"占 2 网格列)逻辑列错位、字段映射取空。逻辑格与 lxml 兜底
             # 路径口径一致,合并值只出现一次,表头/数据天然对齐
-            yield 'tbl', [[_Cell(tc, table).text for tc in row._tr.tc_lst]
-                          for row in table.rows]
+            rows = [[_Cell(tc, table).text for tc in row._tr.tc_lst]
+                    for row in table.rows]
+            if not with_grid:
+                yield 'tbl', rows
+                continue
+            # 各逻辑格 (offset, span) 网格坐标:横向合并格 gridSpan>1,
+            # offset 为该格在表网格中的起始列(供两行表头按网格补父标题)
+            grid = []
+            for row in table.rows:
+                off = 0
+                spans = []
+                for tc in row._tr.tc_lst:
+                    sp = tc.tcPr.grid_span if tc.tcPr is not None else 1
+                    spans.append((off, sp))
+                    off += sp
+                grid.append(spans)
+            yield 'tbl', (rows, grid)
 
 
 def is_docx(file_path: str) -> bool:

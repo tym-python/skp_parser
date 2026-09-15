@@ -40,14 +40,21 @@ class DocxParser(BaseParser):
 
         例:分类行 ["一、基础设施", "一、基础设施"] → ["一、基础设施", ""],
         否则 joined="一、基础设施 一、基础设施" 会被当作分类名整体入库。
+        仅**索引相邻**(i == prev_i + 1)的相同值才视为合并跨列重复;中间隔列的
+        相同值(如 宿迁 文件 资金来源/计划投资 两处 "92300" 落在不同资金明细列、
+        中间夹空列)是真实数据,不清零——否则 年度计划投资 被误清为空。
         """
         out: List[str] = []
         prev = ''
-        for c in cells:
+        prev_i = -1
+        for i, c in enumerate(cells):
             t = str(c).strip()
-            out.append('' if t and t == prev else t)
-            if t:
-                prev = t
+            if t and t == prev and i == prev_i + 1:
+                out.append('')  # 相邻重复(合并跨列)→ 清零
+            else:
+                out.append(t)
+                if t:
+                    prev, prev_i = t, i
         return out
 
     @staticmethod
@@ -65,14 +72,15 @@ class DocxParser(BaseParser):
         paragraph_lines: List[str] = []
         has_table = False
 
-        for kind, payload in iter_blocks(file_path):
+        for kind, payload in iter_blocks(file_path, with_grid=True):
             if kind == 'tbl':
                 has_table = True
                 # 表格 = 项目清单主体:表前通知正文/标题段落、表后落款说明一律
                 # 不参与解析(见类注释),段落路径仅保留"整文档无表格"的纯文本清单
-                rows = [self._clean_row(row) for row in payload]
+                rows, grid = payload  # with_grid:附各逻辑格 (offset, span) 网格坐标
+                rows = [self._clean_row(row) for row in rows]
                 page_projects, prev_header = self.extract_rows_from_table(
-                    rows, context, file_year=self.file_year,
+                    (rows, grid), context, file_year=self.file_year,
                     prev_header_map=prev_header)
                 projects.extend(page_projects)
             else:
