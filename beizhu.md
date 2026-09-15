@@ -3,7 +3,7 @@
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
 		where length(project_name) <10;
@@ -11,7 +11,7 @@
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
 	where p.project_name REGEXP '[(（][0-9]+个[)）]+$';
@@ -61,12 +61,25 @@
     SELECT
     f.id AS fileId,
     f.file_path,
-    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,construction_unit,responsible_unit,project_owner,start_year,end_year,remark
+    p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,start_year,end_year,remark
     FROM skp_file f
     LEFT JOIN skp_project p ON p.file_id = f.id
 		where project_name REGEXP '市$|区$|县$|州$|盟$|省$|人民政府$|政府$|厅$|局$|委$|办$|管委会$|集团$|公司$';
 
-
+### 7. 每个文件展示5条
+    WITH ranked AS (
+    SELECT
+        f.id AS file_id,
+        f.file_path,
+        p.project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,start_year,end_year,remark,
+        ROW_NUMBER() OVER (PARTITION BY f.id ORDER BY p.id) AS rn   -- 按文件分组，按项目ID排序取前5
+    FROM skp_file f
+    LEFT JOIN skp_project p ON p.file_id = f.id 
+		where f.file_name REGEXP 'docx'
+    )
+    SELECT file_id, file_path, project_name,source_row,project_type,category,construction_content,location,extra_info,total_investment,annual_investment,annual_goal,start_year,end_year,remark
+    FROM ranked
+    WHERE rn <= 5;
 
 ## 特殊文件格式xlsx
 ### 1. 2025年重点项目\04重庆市2025年重点项目清单\璧山区2025年\2025年璧山区重点项目清单.xlsx
