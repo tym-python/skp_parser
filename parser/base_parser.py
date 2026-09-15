@@ -165,11 +165,12 @@ class BaseParser(ABC):
     POSITIONAL_TITLE_RE = re.compile(r'(?:项目|工程)[^（()）\n]{0,16}?(?:名单|清单|列表|目录|总表)')
 
     @staticmethod
-    def _positional_header(rows: List[List[Any]]) -> Optional[Tuple[Dict[int, str], int]]:
+    def _positional_header(rows: List[List[Any]],project_list_title:bool=False) -> Optional[Tuple[Dict[int, str], int]]:
         """无表头项目清单表的位置式兜底映射(find_header 未命中且无 prev_header_map 时调用)。
 
-        场景:通知文件文末表格,首行为表名(如 "2022年市级重点项目名单（建设类）")
-        或直接分组/分类行,无列头;数据行按非空列顺序 = 序号/项目名称/建设规模
+        场景:通知文件文末表格,首行为表名(如 "2022年市级重点项目名单（建设类）")  --> project_list_title
+        或直接分组/分类行,无列头;
+        数据行按非空列顺序 = 序号/项目名称/建设规模
         (烟台 2022、濮阳 2023 等)。列角色:
         - 首列序号(POSITIONAL_SEQ_RE)→ 不映射;
         - 第 2 个非空列 → project_name;第 3 个非空列 → construction_content(建设规模)。
@@ -184,8 +185,9 @@ class BaseParser(ABC):
                      and not BaseParser._is_placeholder(c)]
             if len(texts) == 1 and BaseParser.POSITIONAL_TITLE_RE.search(texts[0]):
                 title_idx = idx
+                project_list_title = True
                 break
-        if title_idx == -1:  # 不满足 表格title条件
+        if not project_list_title:  # 不满足 表格title条件
             return None
         name_col = scale_col = None
         data_cnt = 0
@@ -1410,6 +1412,7 @@ class BaseParser(ABC):
                                 context: Optional[Dict[str, str]] = None,
                                 file_year: int = 0,
                                 prev_header_map: Optional[Dict[int, str]] = None,
+                                project_list_title : bool=False
                                 ) -> tuple[List[Dict[str, Any]], Optional[Dict[int, str]]]:
         """公共表格处理:定位表头 → 数据行 map_row → 过滤空项目名,维护分类上下文。
 
@@ -1456,7 +1459,7 @@ class BaseParser(ABC):
         else:
             # 无表头项目清单兜底:首行为表名(…项目名单/项目清单)的表格,按非空列
             # 顺序默认 序号/项目名称/建设规模(烟台 2022、濮阳 2023 等通知文末表)
-            pos = BaseParser._positional_header(rows)
+            pos = BaseParser._positional_header(rows,project_list_title)
             if pos is None:
                 return [], None
             header_map, header_idx = pos

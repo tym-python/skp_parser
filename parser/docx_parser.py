@@ -71,6 +71,7 @@ class DocxParser(BaseParser):
         prev_header: Optional[Dict[int, str]] = None
         paragraph_lines: List[str] = []
         has_table = False
+        project_list_title = False
 
         for kind, payload in iter_blocks(file_path, with_grid=True):
             if kind == 'tbl':
@@ -81,7 +82,7 @@ class DocxParser(BaseParser):
                 rows = [self._clean_row(row) for row in rows]
                 page_projects, prev_header = self.extract_rows_from_table(
                     (rows, grid), context, file_year=self.file_year,
-                    prev_header_map=prev_header)
+                    prev_header_map=prev_header, project_list_title=project_list_title)
                 projects.extend(page_projects)
             else:
                 # 表格前的段落(标题/通知导语/概况句)——仅在尚未出现表格时收集,
@@ -90,6 +91,10 @@ class DocxParser(BaseParser):
                     text = clean_text(payload)
                     if text:
                         paragraph_lines.append(text)
+                        if BaseParser.POSITIONAL_TITLE_RE.search(text) and len(text)<36:
+                            project_list_title = True   # tbl 前一行满足 项目清单
+                        else:
+                            project_list_title = False
 
         if has_table:
             # 表格 = 项目清单主体,段落不参与解析(见类注释)
