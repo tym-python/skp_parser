@@ -57,7 +57,11 @@ def match_field(header: Any) -> Optional[str]:
     短别名("名称/项目名/工程名")精确匹配——如 "项目名单" 含子串 "项目名",
     但它是标题而非表头;复合词表头(如 "单位名称")也不应误配。
     """
-    matched = match_field_with_alias(header.replace(' ',''))
+    try:
+        header = header.replace(' ', '')
+    except:
+        pass
+    matched = match_field_with_alias(header)
     return matched[0] if matched else None
 
 
