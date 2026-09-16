@@ -3,7 +3,7 @@
 import re
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional, Tuple
-
+from parser.text_clean import clean_text
 from parser.field_mapping import build_header_map, clean_amount, extract_years, map_row
 from util.log_util import get_logger
 
@@ -1271,15 +1271,18 @@ class BaseParser(ABC):
         - bare=True(docx 无表格段落清单,如 甘肃 "续建项目：…（一）农业水利项目
           → 逐行项目名"):尚未产出项目时的无序号短文本行(2-60 字、无句读/逗号、
           非 名单/清单 类标题行)作为**独立项目条目**,不做续行拼接
-
+            区分续行：独立项目 or 续行：有序号 or 首行空两格
         context: 跨段共享的分类上下文(如 PDF 跨页共享),None 则新建。
         """
         projects: List[Dict[str, Any]] = []
         context = context if context is not None else {}
-        pending = False
+        pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
+        # previous_line_is_project = False
         for line_idx, line in enumerate(lines, start=1):
-            text = line.strip()
+            if line_idx == 132:
+                pass
+            text = clean_text(line).strip()
             if not text:
                 continue
             # 页码信息清洗:"第 武汉市经济开发区1页,共 34 页 904400 50000" → 去页码片段
@@ -1337,8 +1340,14 @@ class BaseParser(ABC):
                 name = m.group(2).strip()
                 if not name:
                     pending = True  # 序号独占一行,下一行是项目名
-                elif re.match(r'^20\d{2}\s*年', name):
-                    pending = False  # 序号+年份行(如 "2.2020 年第四批…"),忽略
+                # elif re.match(r'^20\d{2}\s*年', name):
+                #     pending = False  # 序号+年份行(如 "2.2020 年第四批…"),忽略
+                elif re.match(
+                        r'^(?![\s\S]*(?:统计|汇总))'  # 整串不能包含“统计”或“汇总”
+                            r'^20\d{2}\s*年(?:度)?'
+                            r'(?=[\s\S]*(?:第(?:[一二三四五六七八九十百千万两]+|\d+)批|统计|汇总|省重点项目名单))'
+                , name):
+                    pending = False  # 内容片段行(表格错乱文本流),忽略
                 elif re.match(r'^(全长|其中|线路全长)', name):
                     pending = False  # 内容片段行(表格错乱文本流),忽略
                 else:
@@ -1362,16 +1371,21 @@ class BaseParser(ABC):
             # 性质组头,之后的短文本行才视为项目;纯通知/新闻稿(docx 无清单表格、
             # 无分类信号)→ 标题/正文段落一律忽略,不产生项目
             if bare:
-                entry = text
-                if list_mode and not pending and 2 <= len(entry) <= 60 \
-                        and not re.search(r'[。！？!?；;]$', entry) \
-                        and not re.search(r'[,，。:：]', entry) \
-                        and not entry.endswith(('名单', '清单', '汇总', '目录', '通知')) \
-                        and not entry.isdigit():
-                    project = self._new_project(entry, entry, context)
-                    project['source_row'] = line_idx  # 文本行号(1-based)
-                    projects.append(project)
-                continue
+                entry = line
+                if list_mode and not pending and 2 <= len(text) <= 60 \
+                        and not re.search(r'[。！？!?；;]$', text) \
+                        and not re.search(r'[,，。:：]', text) \
+                        and not text.endswith(('名单', '清单', '汇总', '目录', '通知')) \
+                        and not text.isdigit():
+                    # 有缩进，且 上一行是项目，== 最新一条project
+                    if entry.startswith('      ') and projects and projects[-1].get('project_name','') and projects[-1]['project_name'] in clean_text(lines[max(0, line_idx-2)]):
+                        pass  # 走后面的续行
+                    else:
+                        project = self._new_project(text, text, context)
+                        project['source_row'] = line_idx  # 文本行号(1-based)
+                        projects.append(project)
+                else:
+                    continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
             if projects:
                 last = projects[-1]
@@ -1386,7 +1400,7 @@ class BaseParser(ABC):
                 # 续行拼接:仅无空格且 ≥2 字的行(避免碎片叠加)
                 if not investment and ' ' not in text and len(text) >= 2:
                     last['project_name'] = f"{last['project_name']} {text}".strip()[:255]
-        return projects
+        return  projects
 
     @staticmethod
     def _new_project(name: str, full_line: str,

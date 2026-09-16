@@ -90,8 +90,8 @@ class DocxParser(BaseParser):
                 if not projects and not prev_header:
                     text = clean_text(payload)
                     if text:
-                        paragraph_lines.append(text)
-                        if BaseParser.POSITIONAL_TITLE_RE.search(text) and len(text)<36:
+                        paragraph_lines.append(payload)
+                        if BaseParser.POSITIONAL_TITLE_RE.search(payload) and len(payload)<36:
                             project_list_title = True   # tbl 前一行满足 项目清单
                         else:
                             project_list_title = False
