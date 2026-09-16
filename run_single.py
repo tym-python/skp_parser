@@ -20,10 +20,10 @@ from util.log_util import get_logger
 
 logger = get_logger(__file__)
 
-SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx'}
+SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'}
 
 
-async def run_single(file_path: Path, upload: bool) -> None:
+async def run_single(file_path: Path, upload: bool, dbkey:str='local') -> None:
     """删除旧数据 → 重新解析入库(file_path.parent 作为相对路径基准)。"""
     if not file_path.is_file():
         raise FileNotFoundError(f"文件不存在: {file_path}")
@@ -36,7 +36,7 @@ async def run_single(file_path: Path, upload: bool) -> None:
     bs = await asyncio.to_thread(file_path.read_bytes)
     file_hash = hashlib.sha256(bs).hexdigest()
 
-    async with AsyncDB() as db:
+    async with AsyncDB(dbkey=dbkey) as db:
         await db.init_db()
 
         # 1. 删除该文件在数据库中的全部关联数据(单事务)
@@ -56,18 +56,10 @@ async def run_single(file_path: Path, upload: bool) -> None:
             logger.error(f"FAIL: {result.file_name} - {result.error}")
 
 
-def main(file_path) -> None:
-    flags = set(a for a in sys.argv[1:] if a.startswith('--'))
-
-    if '--upload' in flags:
-        upload = True
-    elif '--no-upload' in flags:
-        upload = False
-    else:
-        upload = resolve_upload()
+def main(file_path,upload=False,dbkey:str='local') -> None:
 
     logger.info(f"单文件处理: {file_path}(上传 GoFast: {upload})")
-    asyncio.run(run_single(file_path, upload=upload))
+    asyncio.run(run_single(file_path, upload=upload, dbkey=dbkey))
 
 
 if __name__ == "__main__":
@@ -76,8 +68,23 @@ if __name__ == "__main__":
     # file_path= r'2024年重点项目\29四川省2024年重点项目清单\阿坝州2024年\2024年阿坝州重点项目名单.xlsx'
     # file_path= r'2023年重点项目\04重庆市2023年重点项目清单\2023年奉节县\奉节委办发〔2023〕1号附件.xlsx'
     # file_path= r'2026年重点项目\04重庆市2026年重点项目清单\2026年垫江县\重庆市垫江县2026年重点前期项目清单.xlsx'
-    # file_path= r'2022年重点项目\06内蒙古自治区2022年重点项目清单\内蒙古自治区2022年重点经济合作项目.xlsx'
-    file_path= r'2026年重点项目\31浙江省2026年重点项目清单\2026年温州市\2.2026年温州市“百项千亿”重大建设项目清单.docx'
+    # file_path= r'2021年重点项目\02上海市2021年重点项目清单\2021年上海市重大建设项目清单.xlsx'
+    file_path= r'2023年重点项目\26山东省2023年重点项目清单\附件：2023年山东省重点项目名单.docx'  # 没表格
+    file_path= r"2022年重点项目\20湖南省2022年重点项目清单\2022年湖南省重点建设项目名单.docx"
+    file_path= r"2022年重点项目\06内蒙古自治区2022年重点项目清单\4_副本.jpg"
+    file_path= r"2022年重点项目\22江苏省2022年重点项目清单\2022年宿迁市\宿政发〔2022〕2号 2022年度中心城市建设重点工程计划的通知表格.docx"
+    file_path= r"2021年重点项目\2021年各省市重点项目清单汇总（截止3月12日，持续更新中）.docx"
+    file_path= r"2023年重点项目\11福建省2023年重点项目清单\附件：2023年度福建省重点项目名单(1580个).docx"
+    file_path= r"2026年重点项目\文章发布表格.xlsx"
+    # file_path= r"2026年重点项目\12甘肃省2026年重点项目清单\2026年张掖市\张掖市2026年重大建设项目清单.docx"
+    # file_path= r"2026年重点项目\12甘肃省2026年重点项目清单\2026年庆阳市\庆阳市2026年省列重大建设项目名单.docx"
+    # file_path= r"2026年重点项目\12甘肃省2026年重点项目清单\2026年庆阳市\庆阳市2026年市列重大建设项目名单.docx"
+    # file_path= r"2025年重点项目\12甘肃省2025年重点项目清单\2025年甘肃省省列重大建设项目名单.docx"
+    # file_path= r"2026年重点项目\12甘肃省2026年重点项目清单\2026年甘肃省列重大建设项目名单.docx"
+    file_path= r"2023年重点项目\11福建省2023年重点项目清单\2023年龙岩市\附件1：龙岩市2023年重点项目及分级管理单位名单.docx"
+    # file_path = file_path.replace(r'E:\STangWork\STangFiles\各省重点项目：2020年起\', '')
+    print('文件地址：',skpFilePath+'\\'+file_path)
 
     full_path = skpFilePath +'\\'+ file_path
     main(Path(full_path))
+    # main(Path(full_path),True,dbkey='db220')

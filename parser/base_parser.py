@@ -44,6 +44,10 @@ PROJECT_TYPE_WORDS = (
 )
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
+# 续行标识
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号')
+CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
+
 # 兜底分支(序号+分类标题)护栏参数:update_category_context 的兜底把"去序号、
 # 去括号统计后"的整段文本当分类名,但整段实为 项目名称+建设内容 拼接的业务数据行
 # (如 温州 882 "878 科技创新强基领域 全省海上风电…（白马湖实验室） 项目拟选址…
@@ -62,12 +66,12 @@ GROUP_CITY_MAX_LEN = 5
 # 单行表头(极简清单,header_map ≤1 列)分组行的机构/区划后缀:
 # 不含 集团/公司/学院/研究院/中心 等真项目名单格常见结尾(如 "xx公司"/"xx研究中心")
 GROUP_SINGLE_SUFFIX_RE = re.compile(
-    r'(人民政府|政府|厅|局|委|办|管委会|县|州|盟|省|联合会|农业科学院|广播电视台)$')
+    r'(人民政府|政府|厅|局|委|办|管委会|委员会|县|州|盟|省|联合会|农业科学院|广播电视台|组织部|市铁路建设发展中心|高新区（经开区）)$')
 GROUP_CITY_SUFFIX_RE = re.compile(r'[市区]$')
 # 多列映射表分组的机构名单格后缀(≤14 字,防长文本误判;不含 学院/医院/学校/研究院,
 # "xx商务中心" 等真项目名由业务字段判断识别)
 GROUP_ORG_SUFFIX_RE = re.compile(
-    r'(人民政府|政府|厅|局|委|办|管委会|集团|公司|联合会|农业科学院|广播电视台)$')
+    r'(人民政府|政府|厅|局|委|办|管委会|委员会|集团|公司|联合会|农业科学院|广播电视台|组织部|市铁路建设发展中心)$')
 # 机构后缀中的 "厅" 与场所类项目名冲突:以 餐厅/展厅/音乐厅/办事大厅 等结尾的是
 # 真项目(如 "骏升新能源汽车城市展厅"、"金拱门食品有限公司未来智慧餐厅"),
 # 不按机构分组识别。机构名("自治区教育厅" 等)不命中该词表。
@@ -1280,7 +1284,7 @@ class BaseParser(ABC):
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
         # previous_line_is_project = False
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 132:
+            if line_idx == 220:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1314,14 +1318,17 @@ class BaseParser(ABC):
                 continue
             # 性质分组头独立行(如 "续建项目："/"预备项目:" 后接该类项目条目,
             # docx 段落式清单常见,如 甘肃 "续建项目：")→ 更新 project_type 上下文
-            m_grp = re.match(
-                rf'^(?P<pt>{PT})(?:项目|名单)?\s*[:：]\s*$',
-                text)
+            m_grp = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+                     rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
+                     rf'\s*$', text)
             if m_grp:
                 context['project_type'] = m_grp.group('pt')
                 if bare:
                     list_mode = True  # 性质组头 = 段落式清单的启动信号
                 pending = False
+                continue
+            # group分组独立行
+            if BaseParser.is_group_row_minimal([text]):
                 continue
             if self.is_category_name(text) and self.apply_category(text, context):
                 # bare 模式仅接受 分类词尾 的分区标题作为启动信号
@@ -1377,13 +1384,14 @@ class BaseParser(ABC):
                         and not re.search(r'[,，。:：]', text) \
                         and not text.endswith(('名单', '清单', '汇总', '目录', '通知')) \
                         and not text.isdigit():
-                    # 有缩进，且 上一行是项目，== 最新一条project
-                    if entry.startswith('      ') and projects and projects[-1].get('project_name','') and projects[-1]['project_name'] in clean_text(lines[max(0, line_idx-2)]):
+                    # 有缩进 或 长度较低且包含'项目'，且 上一行是项目，== 最新一条project
+                    if (entry.startswith('   ') or BaseParser._filter_seconde_name(entry)) and projects and projects[-1].get('project_name','') and projects[-1]['project_name'] in clean_text(lines[max(0, line_idx-2)]):
                         pass  # 走后面的续行
                     else:
                         project = self._new_project(text, text, context)
                         project['source_row'] = line_idx  # 文本行号(1-based)
                         projects.append(project)
+                        continue
                 else:
                     continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
@@ -1652,4 +1660,4 @@ class BaseParser(ABC):
         第二行项目名如果：大道|项目|工程|生产|建设|设备|改造，不认为是有效project_name。
         :return 需要过滤 True
         '''
-        return bool(re.fullmatch(r'大道|项目|工程|生产|建设|设备|改造|租赁|程|分序号|总序号|附件\d', s))
+        return bool(re.fullmatch(rf'.?(?:{CL}|附件\d|项目数\s*\d+\s*个).?', s))
