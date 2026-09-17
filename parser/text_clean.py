@@ -40,6 +40,7 @@ def clean_text(text: Optional[object], max_len: Optional[int] = None) -> str:
     """
     cleaned = halfwidth(str(text if text is not None else ''))
     cleaned = collapse(cleaned)
+    cleaned = re.sub('ε','3',cleaned)
     if max_len is not None and len(cleaned) > max_len:
         cleaned = cleaned[:max_len]
     return cleaned

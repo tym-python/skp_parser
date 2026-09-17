@@ -35,8 +35,16 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
 # 单位类字段:入库时转入 skp_project_unit(单位表头 + 单位名称),不再写入 skp_project
 UNIT_FIELDS: Tuple[str, ...] = ('construction_unit', 'project_owner', 'responsible_unit')
 
-# 金额文本:如 "120.5亿元"、"120000万元"、"120,000"、"总投资:250000万元"
-INVESTMENT_RE = re.compile(r'([\d,，]+(?:\.\d+)?)\s*(亿元|万元|亿|万)?')
+# 金额文本:如 "120.5亿元"、"120000万元"、"120,000"、"总投资:250000万元"，排除行首数字（序号 项目名 万开头）
+# 行数据，不可匹配行首
+LINE_INVESTMENT_RE = re.compile(
+    r'(?<!^)(?<!\d)'
+    r'([\d,，]+(?:\.\d+)?)\s*(亿元|万元|亿|万)?',
+    re.MULTILINE
+)
+# 单元格金额，可匹配行首
+CELL_INVESTMENT_RE = re.compile(r'([\d,，]+(?:\.\d+)?)\s*(亿元|万元|亿|万)?')
+
 # 表头中的单位,如 "(亿元)"、"（万元）"
 HEADER_UNIT_RE = re.compile(r'[（(]\s*(亿元|万元|亿|万)\s*[)）]')
 # 常见非信息列(序号/编号等),不收入 extra_fields
@@ -45,6 +53,11 @@ SKIP_EXTRA_HEADERS = ('序号', '编号', '序次', 'no', 'seq')
 _AMOUNT_QUANTIFIERS = '件片吨亩米个台套户人支节栋座处头只辆艘架次平千瓦标立'
 # 年份文本:如 "2023"、"2023-2025"、"2023年至2025年"
 YEAR_RE = re.compile(r'(20\d{2})\s*[年\-/—至~～]{0,3}\s*(20\d{2})?')
+line_YEAR_RE = re.compile(
+    r'(20\d{2})'
+    r'(?!\s*[年\-/—至~～]\s*(?!20\d{2})\d)'   # 后面不能是 -07 这种非年份编号
+    r'(?:\s*[年\-/—至~～]{0,3}\s*(20\d{2}))?'
+)
 
 
 # 短别名采用精确匹配,防止 "项目名单/进度目标责任表" 等复合词被误配为表头
@@ -124,7 +137,7 @@ def build_header_map(headers: List[Any]) -> Dict[int, str]:
     return header_map
 
 
-def clean_amount(text: Any, require_unit: bool = False, unit_scale: str = '') -> float:
+def clean_amount(text: Any, require_unit: bool = False, unit_scale: str = '', textType: str='line') -> float:
     """把金额文本清洗为万元数值;无法解析返回 0.0。
 
     Args:
@@ -137,7 +150,12 @@ def clean_amount(text: Any, require_unit: bool = False, unit_scale: str = '') ->
     s = str(text).strip().replace(',', '').replace('，', '')
     if not s or s in {'-', '/', '—', '—', '--'}:
         return 0.0
-    matches = list(INVESTMENT_RE.finditer(s))
+    if textType == 'cell':
+        matches = list(CELL_INVESTMENT_RE.finditer(s))
+    elif textType == 'line':
+        matches = list(LINE_INVESTMENT_RE.finditer(s))
+    else:
+        matches = []
     for m in matches:
         unit = m.group(2) or unit_scale
         if require_unit and not unit:
@@ -162,7 +180,7 @@ def header_unit(header: Any) -> str:
     return m.group(1) if m else ''
 
 
-def extract_years(text: Any) -> Tuple[int, int]:
+def extract_years(text: Any, textType :str='cell') -> Tuple[int, int]:
     """从文本/数值中提取起止年份,返回 (start_year, end_year),无则 0。
 
     支持:
@@ -174,7 +192,10 @@ def extract_years(text: Any) -> Tuple[int, int]:
     if isinstance(text, (int, float)) and not isinstance(text, bool):
         year = _excel_serial_to_year(text)
         return (year, 0) if year else (0, 0)
-    m = YEAR_RE.search(str(text))
+    if textType == 'cell':
+        m = YEAR_RE.search(str(text))
+    elif textType == 'line':
+        m = YEAR_RE.search(str(text))
     if not m:
         return 0, 0
     start = int(m.group(1))
@@ -243,7 +264,7 @@ def map_row(header_map: Dict[int, str], row: List[Any],
                     project.setdefault('extra_fields', {})[header_text] = str(cell or '').strip()
                 continue
             unit_scale = header_unit(headers[idx]) if headers and idx < len(headers) else ''
-            project[field] = clean_amount(cell, unit_scale=unit_scale)
+            project[field] = clean_amount(cell, unit_scale=unit_scale, textType='cell')
         elif field == 'year_range':
             start, end = extract_years(cell)
             project['start_year'] = project.get('start_year') or start
