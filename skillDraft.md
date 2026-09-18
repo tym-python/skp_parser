@@ -597,10 +597,14 @@ group_type_title 同步生效;文本兜底 parse_lines 过滤正文标签行
     (`docx_image_blocks`,document.xml 的 r:embed 引用序 + rels 映射)抽出全部内嵌图
     → 逐张 OCR → `parse_lines(ocr_lines, context)` 续接段落路径,有产出记 info
     "纯图片 docx,OCR 解析 N 条";有表格或有段落产出的常规 docx 不触发
-- **OCR 引擎**:PaddleOCR(懒加载单例,首个图片触发,初始化约数秒;
+- **OCR 引擎**:原来用PaddleOCR，后换用RapidOCR(懒加载单例,首个图片触发,初始化约数秒;
   lang='ch',关闭文档方向/去扭曲/文本行方向三个分类器)
-- **文本行重组**:`ocr_image_bytes` 按 y 中心分组成行(阈值 max(8, 行高×0.6),
-  滚动更新行中心)、行内按 x 排序空格连接;图片解码失败/面积 <1000/OCR 异常/
+- **文本行重组**:`ocr_image_bytes` ,`ocr_to_tablelines.py`(`reconstruct_table_by_header`),分段落识别和表格识别,
+  _fallback_paragraph(段落模式)(物理行 < 2  | body_items 为空| col_defs < 2|all_cells 为空),
+  物理行切分（仅用于找表头）——> 识别表头行数 → 表头 items / 数据 items
+  ——> 表头定列（col_defs）——>  数据 items 按 xc 落到各列 ——> 列内独立合并单元格（自适应阈值）→ all_cells
+  ——> 以「项目名称」列为锚点分行 渲染为 List[List[str]];
+  图片解码失败/面积 <1000/OCR 异常/
   无文本 → 返回空列表(记 warning,不抛异常、不中断)
 - 无文本图片 → 该文件 0 条,记 warning 提示"疑似非清单图片"
 
