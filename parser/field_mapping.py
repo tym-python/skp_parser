@@ -115,6 +115,7 @@ def match_field_with_alias(header: Any) -> Optional[Tuple[str, str]]:
         # 为空)residual 为空 → 仍 fall through 通用别名,广东 投资计划列不受影响
         residual = re.sub(r'(投资计划|计划投资|年度投资|资金来源|推进计划)', '', text)
         residual = re.sub(r'[0-9年月日.\-]', '', residual)
+        residual = re.sub(r'\s*[(（]?\s*(?:亿元|万元|亿|万|元)\s*[)）]?\s*$', '', residual)
         if residual:
             return None
     for field, aliases in HEADER_ALIASES.items():

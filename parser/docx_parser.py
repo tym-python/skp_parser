@@ -110,9 +110,11 @@ class DocxParser(BaseParser):
             if not projects:
                 from parser.ocr_parser import docx_image_blocks, ocr_image_bytes
                 for img in docx_image_blocks(file_path):
-                    ocr_lines = ocr_image_bytes(img)
-                    if ocr_lines:
+                    ocr_lines,_ = ocr_image_bytes(img)
+                    if ocr_lines and _ == 'lines':
                         projects.extend(self.parse_lines(ocr_lines, context))
+                    elif ocr_lines and _ == 'table':
+                        projects.extend(self.extract_rows_from_table(ocr_lines, context)[0])
                 if projects:
                     logger.info(f"{file_path}: 纯图片 docx,OCR 解析 {len(projects)} 条")
                 else:

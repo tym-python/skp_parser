@@ -40,7 +40,7 @@ CATEGORY_Supplement_WORDS = (
     '一产项目','二产项目','三产项目',
 )
 PROJECT_TYPE_WORDS = (
-    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工'
+    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进'
 )
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
@@ -537,7 +537,9 @@ class BaseParser(ABC):
             if mt:
                 return mt.group('pt')
         # 形态2:性质分组行(序号列空 + 名称列 "性质词+项目")
-        if header_map is not None and cells and not str(cells[0] or '').strip():
+        # 形态2:性质分组行(序号列 + 名称列 "性质词+项目")
+        if header_map is not None and cells and (not str(cells[0] or '').strip()
+                or re.fullmatch(r'^[（(]{0,1}[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]{0,1}[、.．\s]{0,1}', cells[0])):
             name_col = next((c for c, f in header_map.items() if f == 'project_name'), None)
             if name_col is None or name_col >= len(cells):
                 return ''
@@ -1243,8 +1245,7 @@ class BaseParser(ABC):
     @staticmethod
     def _is_type_title(sub: str, context: Dict[str, str]) -> bool:
         """判断子标题是否为纯建设性质标题(如 "续建项目"/"新建"),是则更新 project_type。"""
-        type_words = ('新建', '续建', '竣工投产', '投产', '预备', '储备', '新开工', '前期')
-        for word in type_words:
+        for word in PROJECT_TYPE_WORDS:
             if sub == word or sub == word + '项目':
                 context['project_type'] = word
                 return True
@@ -1282,9 +1283,8 @@ class BaseParser(ABC):
         context = context if context is not None else {}
         pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
-        # previous_line_is_project = False
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 220:
+            if line_idx == 9:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1400,7 +1400,7 @@ class BaseParser(ABC):
                 investment = clean_amount(text, require_unit=True)
                 if investment:
                     last['total_investment'] = investment
-                start, end = extract_years(text)
+                start, end = extract_years(text, textType='line')
                 if start and not last.get('start_year'):
                     last['start_year'] = start
                 if end and not last.get('end_year'):
@@ -1420,10 +1420,10 @@ class BaseParser(ABC):
         if context:
             project['category'] = context.get('category', '')
             project['project_type'] = context.get('project_type', '')
-        investment = clean_amount(full_line, require_unit=True)
+        investment = clean_amount(full_line, require_unit=True, textType='line')
         if investment:
             project['total_investment'] = investment
-        start, end = extract_years(full_line)
+        start, end = extract_years(full_line, textType='line')
         if start:
             project['start_year'] = start
         if end:
@@ -1529,7 +1529,7 @@ class BaseParser(ABC):
                 nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
                 if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
                     del cells[name_col]
-            if row_i == 14-1:
+            if row_i == 21-1:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue

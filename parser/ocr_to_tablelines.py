@@ -16,7 +16,7 @@ def _get_engine():
 # ============================================================
 # 一、OCR 结果 → items
 # ============================================================
-def _parse_items(result) -> List[Dict[str, Any]]:
+def parse_items(result) -> List[Dict[str, Any]]:
     if result.boxes is None or result.txts is None:
         return []
     items = []
@@ -373,7 +373,7 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     phys_rows = _split_physical_rows(items, avg_h)
     if len(phys_rows) < 2:
         # 没有数据行，退回段落
-        return _fallback_paragraph(items)
+        return _fallback_paragraph(items),'lines'
 
     # 2) 表头行数 + 表头 items / 数据 items
     header_n = _detect_header_rows(phys_rows, avg_h)
@@ -381,12 +381,12 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     body_items = [it for r in phys_rows[header_n:] for it in r]
 
     if not body_items:
-        return _fallback_paragraph(items)
+        return _fallback_paragraph(items),'lines'
 
     # 3) 表头定列
     col_defs = _build_columns_from_header(header_items)
     if len(col_defs) < 2:
-        return _fallback_paragraph(items)
+        return _fallback_paragraph(items),'lines'
 
     # 4) 数据 items 按 x0 分列
     col_items_list: List[List[Dict]] = [[] for _ in col_defs]
@@ -410,7 +410,7 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
             })
 
     if not all_cells:
-        return _fallback_paragraph(items)
+        return _fallback_paragraph(items),'lines'
 
     # 2. 找锚点列
     anchor_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
@@ -421,21 +421,31 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     rows = group_cells_into_rows_with_anchor(all_cells, anchor_col_idx, avg_h)
 
     # 4. 输出
-    result = [' | '.join(c['header'] for c in col_defs)]
+    # result = [' | '.join(c['header'] for c in col_defs)]
+    # for row in rows:
+    #     cells = [""] * len(col_defs)
+    #     for c in row:
+    #         if cells[c['col_idx']]:
+    #             cells[c['col_idx']] += " " + c['text']
+    #         else:
+    #             cells[c['col_idx']] = c['text']
+    #     if any(c.strip() for c in cells):
+    #         result.append(' | '.join(cells))
+    # 输出，构造List[List[Any]]   ————> base_parser.py extract_rows_from_table
+    result: List[List[Any]] = []
+    result.append([c['header'] for c in col_defs])
     for row in rows:
         cells = [""] * len(col_defs)
         for c in row:
-            if cells[c['col_idx']]:
-                cells[c['col_idx']] += " " + c['text']
+            idx = c['col_idx']
+            if cells[idx]:
+                cells[idx] += " " + c['text']
             else:
-                cells[c['col_idx']] = c['text']
+                cells[idx] = c['text']
         if any(c.strip() for c in cells):
-            result.append(' | '.join(cells))
-    for ln in result:
-        print(ln)
-    print('='*30)
+            result.append(cells)
 
-    return result
+    return result,'table'
 
 
 # ============================================================
@@ -472,7 +482,7 @@ def ocr_image_bytes(data: bytes) -> List[str]:
             return []
 
         result = _get_engine()(img)
-        items = _parse_items(result)
+        items = parse_items(result)
         if not items:
             return []
 
@@ -485,12 +495,12 @@ def ocr_image_bytes(data: bytes) -> List[str]:
 if __name__ == '__main__':
 
     file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
-    file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
+    # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
     full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
     with open(full_path, 'rb') as f:
         data = f.read()
 
-    lines = ocr_image_bytes(data)
+    lines,_ = ocr_image_bytes(data)
     for ln in lines:
         print(ln)
 
