@@ -584,7 +584,7 @@ group_type_title 同步生效;文本兜底 parse_lines 过滤正文标签行
   "Table" 等,导出/复制文件常见——曾整 sheet 项目 category='Table' 入库,如 广东 2021/2026 清单、
   广西(第一批) 173 条);xls 解析器同步处理
 
-### OCR 图片(`ocr_parser.py`)
+### OCR 图片(`ocr_parser.py` + `ocr_to_tablelines.py`)
 
 图片清单以 OCR 文本行进入既有行级兜底,**不新增解析规则**(序号行/分类行/续行拼接
 等与 docx 段落清单一致):
