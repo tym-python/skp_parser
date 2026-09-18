@@ -284,13 +284,15 @@ def group_cells_into_rows(all_cells: List[Dict], n_cols: int, avg_h: float) -> L
         result.append(row['cells'])
     return result
 
+# ============================================================
+# 寻找锚点列：锚点行的 y 范围直接来自项目名称列的 cell 的 y 范围
+# ============================================================
 def _find_anchor_col_idx(col_defs: List[Dict], keyword: str = "项目名称") -> int:
     """在表头列定义里找到包含关键字的列索引。"""
     for i, c in enumerate(col_defs):
         if keyword in c.get('header', ''):
             return i
     return -1  # 没找到
-
 
 def group_cells_into_rows_with_anchor(
     all_cells: List[Dict],
@@ -356,23 +358,6 @@ def group_cells_into_rows_with_anchor(
     for row in anchor_rows:
         row['cells'].sort(key=lambda x: x['col_idx'])
         result.append(row['cells'])
-    return result
-
-# 拿到 rows 后，按列号填入，缺失的列就是空格：
-def render_rows(rows: List[List[Dict]], n_cols: int) -> List[str]:
-    """每行按 col_idx 填入对应位置，缺失的列为空。"""
-    result = []
-    for row in rows:
-        cells = [""] * n_cols
-        for c in row:
-            idx = c['col_idx']
-            if cells[idx]:
-                cells[idx] += " " + c['text']
-            else:
-                cells[idx] = c['text']
-        # 整行全空则跳过
-        if any(c.strip() for c in cells):
-            result.append(" | ".join(cells))
     return result
 
 # ============================================================
@@ -449,39 +434,6 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     for ln in result:
         print(ln)
     print('='*30)
-    # 6) ★ 用 y 范围重叠对齐逻辑行（不再按固定行高）
-    def y_overlap(a, b):
-        ov = max(0.0, min(a['y1'], b['y1']) - max(a['y0'], b['y0']))
-        if ov <= 0:
-            return 0.0
-        h_min = min(a['y1'] - a['y0'], b['y1'] - b['y0'])
-        return ov / max(1.0, h_min)
-
-    all_cells.sort(key=lambda x: (x['y0'], x['col_idx']))
-    logical_rows: List[List[Dict]] = []
-    for c in all_cells:
-        placed = False
-        for row in reversed(logical_rows):
-            if any(y_overlap(rc, c) > 0.3 for rc in row):
-                row.append(c)
-                placed = True
-                break
-        if not placed:
-            logical_rows.append([c])
-
-    logical_rows.sort(key=lambda r: min(c['y0'] for c in r))
-
-    # 7) 输出表头 + 数据行
-    result = [' | '.join(c['header'] for c in col_defs)]
-    for row in logical_rows:
-        cells = [""] * len(col_defs)
-        for c in row:
-            if cells[c['col_idx']]:
-                cells[c['col_idx']] += " " + c['text']
-            else:
-                cells[c['col_idx']] = c['text']
-        if any(c.strip() for c in cells):
-            result.append(' | '.join(cells))
 
     return result
 
@@ -507,8 +459,6 @@ def _fallback_paragraph(items: List[Dict]) -> List[str]:
             lines.append([it])
     lines.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
     return [' '.join(x['text'] for x in sorted(l, key=lambda y: y['x0'])) for l in lines]
-
-
 
 # ============================================================
 # 九、统一入口
