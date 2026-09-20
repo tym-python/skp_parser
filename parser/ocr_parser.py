@@ -52,22 +52,22 @@ def ocr_image_bytes(data: bytes) -> List[str]:
     失败(解码不了/OCR 异常/无文本)返回空列表,不抛异常。
     """
     if not data:
-        return []
+        return [],None
     try:
         img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None or img.size < 1000:
-            return []
+            return [],None
 
         result = _get_engine()(img)
         items = parse_items(result)
         if not items:
-            return []
+            return [],None
 
         return reconstruct_table_by_header(items)
 
     except Exception as ex:
         logger.warning(f"图片 OCR 失败: {type(ex).__name__}: {ex}")
-        return []
+        return [],None
 
 def docx_image_blocks(file_path: str) -> List[bytes]:
     """按 body(正文)顺序提取 docx 内嵌图字节列表(r:embed 引用顺序)。"""

@@ -1,7 +1,9 @@
+import re
 from typing import List, Dict, Any
 import logging
 import cv2
 import numpy as np
+from parser.field_mapping import HEADER_ALIASES
 logger = logging.getLogger(__name__)
 
 _rapid_engine = None
@@ -21,7 +23,9 @@ def parse_items(result) -> List[Dict[str, Any]]:
         return []
     items = []
     for poly, text in zip(result.boxes, result.txts):
-        text = text.strip()
+        text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
+        text = re.sub(r'^\s*-\s*\d+\s*-\s*$', ' ', text).strip()
+        text = re.sub(r'基建通', '', text).strip()
         if not text:
             continue
         xs = [float(p[0]) for p in poly]
@@ -132,17 +136,21 @@ def _detect_header_rows(rows: List[List[Dict]], avg_h: float) -> int:
 # ============================================================
 def _build_columns_from_header(header_items: List[Dict]) -> List[Dict]:
     """把表头里的 items 按 x 范围重叠聚类成列。"""
-    header_sorted = sorted(header_items, key=lambda x: x['xc'])
+    header_sorted = sorted(header_items, key=lambda x:  (x['y0'], x['x0']))
     columns: List[List[Dict]] = []
+    header_word = [alias for t in HEADER_ALIASES.values() for alias in t]
     for it in header_sorted:
         placed = False
         for col in columns:
             col_x0 = min(x['x0'] for x in col)
             col_x1 = max(x['x1'] for x in col)
-            if it['xc'] >= col_x0 and it['xc'] <= col_x1:
-                col.append(it)
+            if it['xc'] > col_x0 and it['xc'] < col_x1:  # 同一列
                 placed = True
-                break
+                if col[0]['text'] in header_word:
+                    continue
+                else:
+                    col.append(it)
+                    break
         if not placed:
             columns.append([it])
 
@@ -234,7 +242,7 @@ def _merge_cells_in_column(col_items: List[Dict], avg_h: float) -> List[List[Dic
 # ============================================================
 # 分列并合并text之后，y 范围重叠贪心聚类 分行
 # ============================================================
-def group_cells_into_rows(all_cells: List[Dict], n_cols: int, avg_h: float) -> List[List[Dict]]:
+def group_cells_into_rows(all_cells: List[Dict]) -> List[List[Dict]]:
     """把 all_cells 按 y 范围重叠聚成逻辑行。
 
     返回 List[List[Dict]]，每一行内的 cell 按 col_idx 排序。
@@ -310,11 +318,11 @@ def group_cells_into_rows_with_anchor(
     # ---------- 1) 取出锚点列的 cells ----------
     if anchor_col_idx < 0:
         # 没找到锚点列 → 退回无锚点的通用方案
-        return group_cells_into_rows(all_cells, avg_h)
+        return group_cells_into_rows(all_cells)
 
     anchor_cells = [c for c in all_cells if c['col_idx'] == anchor_col_idx]
     if not anchor_cells:
-        return group_cells_into_rows(all_cells, avg_h)
+        return group_cells_into_rows(all_cells)
 
     anchor_cells.sort(key=lambda x: x['y0'])
 
@@ -388,34 +396,54 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     if len(col_defs) < 2:
         return _fallback_paragraph(items),'lines'
 
+    # 2. 找锚点列
+    anchor_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
+    if anchor_col_idx < 0:
+        anchor_col_idx = 1  # 兜底：默认第 1 列
+
     # 4) 数据 items 按 x0 分列
     col_items_list: List[List[Dict]] = [[] for _ in col_defs]
     for it in body_items:
         idx = _assign_column(it, col_defs)
         col_items_list[idx].append(it)
 
-    # 5) ★ 每列独立合并单元格（这是替换点：不再按全局物理行）
-    all_cells: List[Dict] = []
-    for col_idx, col_items in enumerate(col_items_list):
-        if col_idx == 6:
-            pass
-        for cell in _merge_cells_in_column(col_items, avg_h):
-            all_cells.append({
-                'col_idx': col_idx,
-                'x0': min(x['x0'] for x in cell),
-                'x1': max(x['x1'] for x in cell),
-                'y0': min(x['y0'] for x in cell),
-                'y1': max(x['y1'] for x in cell),
-                'text': _cell_text(cell, avg_h),
-            })
+    # 根据项目名称列gap最大值，判断是否换行自适应
+    project_nmae_gaps = []
+    for i in range(1, len(col_items_list[anchor_col_idx])):
+        prev_max_y1 = max(x['y1'] for x in col_items_list[anchor_col_idx][:i])
+        project_nmae_gaps.append(max(0.0, col_items_list[anchor_col_idx][i]['y0'] - prev_max_y1))
+    if max(project_nmae_gaps) > avg_h: # 有换行
+        # 5) ★ 每列独立合并单元格（这是替换点：不再按全局物理行）
+        print(f'有换行，原始项目列条数{len(col_items_list[anchor_col_idx])}')
+        all_cells: List[Dict] = []
+        for col_idx, col_items in enumerate(col_items_list):
+            if col_idx == 6:
+                pass
+            for cell in _merge_cells_in_column(col_items, avg_h):
+                all_cells.append({
+                    'col_idx': col_idx,
+                    'x0': min(x['x0'] for x in cell),
+                    'x1': max(x['x1'] for x in cell),
+                    'y0': min(x['y0'] for x in cell),
+                    'y1': max(x['y1'] for x in cell),
+                    'text': _cell_text(cell, avg_h),
+                })
+    else:
+        print(f'无换行，原始项目列条数{len(col_items_list[anchor_col_idx])}')
+        all_cells: List[Dict] = []
+        for col_idx, col_items in enumerate(col_items_list):
+            for cell in col_items:
+                all_cells.append({
+                    'col_idx': col_idx,
+                    'x0': cell['x0'],
+                    'x1': cell['x1'],
+                    'y0': cell['y0'],
+                    'y1':cell['y1'],
+                    'text': cell['text'],
+                })
 
     if not all_cells:
         return _fallback_paragraph(items),'lines'
-
-    # 2. 找锚点列
-    anchor_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
-    if anchor_col_idx < 0:
-        anchor_col_idx = 1  # 兜底：默认第 1 列
 
     # 3. 用锚点分行
     rows = group_cells_into_rows_with_anchor(all_cells, anchor_col_idx, avg_h)
@@ -475,33 +503,97 @@ def _fallback_paragraph(items: List[Dict]) -> List[str]:
 # ============================================================
 def ocr_image_bytes(data: bytes) -> List[str]:
     if not data:
-        return []
+        return [],None
     try:
         img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
         if img is None or img.size < 1000:
-            return []
+            return [],None
 
         result = _get_engine()(img)
         items = parse_items(result)
         if not items:
-            return []
+            return [],None
 
         return reconstruct_table_by_header(items)
 
     except Exception as ex:
         logger.warning(f"OCR 失败: {type(ex).__name__}: {ex}")
-        return []
+        return [],None
 
-if __name__ == '__main__':
+# if __name__ != '__main__':
+#
+#     file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
+#     # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
+#     full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
+#     full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0012.jpg'
+#     with open(full_path, 'rb') as f:
+#         data = f.read()
+#
+#     lines,_ = ocr_image_bytes(data)
+#     for ln in lines:
+#         print(ln)
 
-    file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
-    # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
-    full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
-    with open(full_path, 'rb') as f:
-        data = f.read()
 
-    lines,_ = ocr_image_bytes(data)
-    for ln in lines:
-        print(ln)
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+遍历指定目录及其所有子目录，每个文件夹取一张图片。
+"""
+
+import os
+import argparse
+from pathlib import Path
+
+# 支持的图片扩展名
+IMAGE_EXTS = {
+    '.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp',
+    '.tif', '.tiff', '.ico', '.jfif', '.avif', '.heic'
+}
 
 
+def iter_one_image_per_folder(root, exts=IMAGE_EXTS, sort=True):
+    """
+    生成器：每遍历到一个含图片的文件夹，产出一个 (文件夹路径, 图片路径)。
+    """
+    root = Path(root)
+    if not root.is_dir():
+        raise NotADirectoryError(f"不是有效目录: {root}")
+
+    for dirpath, dirnames, filenames in os.walk(root):
+        # 跳过隐藏文件夹（不需要可删掉这一行）
+        dirnames[:] = [d for d in dirnames if not d.startswith('.')]
+
+        images = [
+            f for f in filenames
+            if not f.startswith('.') and Path(f).suffix.lower() in exts
+        ]
+
+        if images:
+            if sort:
+                images.sort()          # 按文件名排序，取第一张
+            yield Path(dirpath), Path(dirpath) / images[0]
+
+
+def main(root_path):
+    count = 0
+    for folder, image in iter_one_image_per_folder(root_path):
+        print(f"[文件夹] {folder}")
+        print(f"[图片]   {image}\n")
+        count += 1
+        with open(image, 'rb') as f:
+            data = f.read()
+
+        lines,_ = ocr_image_bytes(data)
+        for ln in lines:
+            print(ln)
+        print('='*30,len(lines))
+
+        # 这里可以对 image 做你想做的事，比如：
+        # shutil.copy(image, "output/")        # 复制
+        # Image.open(image).thumbnail((256,256))  # 缩略图
+
+    print(f"共在 {count} 个文件夹中各找到 1 张图片。")
+
+
+if __name__ == "__main__":
+    main(r'E:\STangWork\STangFiles\各省重点项目：2020年起')
