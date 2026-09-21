@@ -396,10 +396,10 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
     if len(col_defs) < 2:
         return _fallback_paragraph(items),'lines'
 
-    # 2. 找锚点列
-    anchor_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
-    if anchor_col_idx < 0:
-        anchor_col_idx = 1  # 兜底：默认第 1 列
+    # 3) 找锚点列（项目名称列）
+    project_name_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
+    if project_name_col_idx < 0:
+        project_name_col_idx = 1  # 兜底：默认第 1 列
 
     # 4) 数据 items 按 x0 分列
     col_items_list: List[List[Dict]] = [[] for _ in col_defs]
@@ -407,14 +407,17 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
         idx = _assign_column(it, col_defs)
         col_items_list[idx].append(it)
 
-    # 根据项目名称列gap最大值，判断是否换行自适应
+    # 5) 根据项目名称列gap最大值，判断是否换行自适应
     project_nmae_gaps = []
-    for i in range(1, len(col_items_list[anchor_col_idx])):
-        prev_max_y1 = max(x['y1'] for x in col_items_list[anchor_col_idx][:i])
-        project_nmae_gaps.append(max(0.0, col_items_list[anchor_col_idx][i]['y0'] - prev_max_y1))
+    for i in range(1, len(col_items_list[project_name_col_idx])):
+        prev_max_y1 = max(x['y1'] for x in col_items_list[project_name_col_idx][:i])
+        project_nmae_gaps.append(max(0.0, col_items_list[project_name_col_idx][i]['y0'] - prev_max_y1))
+
+    # 6) ★ 每列独立合并单元格（不按全局物理行）
     if max(project_nmae_gaps) > avg_h: # 有换行
-        # 5) ★ 每列独立合并单元格（这是替换点：不再按全局物理行）
-        print(f'有换行，原始项目列条数{len(col_items_list[anchor_col_idx])}')
+
+        print(f'有换行，原始项目列条数{len(col_items_list[project_name_col_idx])}')
+
         all_cells: List[Dict] = []
         for col_idx, col_items in enumerate(col_items_list):
             if col_idx == 6:
@@ -429,7 +432,7 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
                     'text': _cell_text(cell, avg_h),
                 })
     else:
-        print(f'无换行，原始项目列条数{len(col_items_list[anchor_col_idx])}')
+        print(f'无换行，原始项目列条数{len(col_items_list[project_name_col_idx])}')
         all_cells: List[Dict] = []
         for col_idx, col_items in enumerate(col_items_list):
             for cell in col_items:
@@ -446,7 +449,7 @@ def reconstruct_table_by_header(items: List[Dict]) -> List[str]:
         return _fallback_paragraph(items),'lines'
 
     # 3. 用锚点分行
-    rows = group_cells_into_rows_with_anchor(all_cells, anchor_col_idx, avg_h)
+    rows = group_cells_into_rows_with_anchor(all_cells, project_name_col_idx, avg_h)
 
     # 4. 输出
     # result = [' | '.join(c['header'] for c in col_defs)]
@@ -520,20 +523,6 @@ def ocr_image_bytes(data: bytes) -> List[str]:
         logger.warning(f"OCR 失败: {type(ex).__name__}: {ex}")
         return [],None
 
-# if __name__ != '__main__':
-#
-#     file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
-#     # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
-#     full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
-#     full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0012.jpg'
-#     with open(full_path, 'rb') as f:
-#         data = f.read()
-#
-#     lines,_ = ocr_image_bytes(data)
-#     for ln in lines:
-#         print(ln)
-
-
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -596,4 +585,19 @@ def main(root_path):
 
 
 if __name__ == "__main__":
-    main(r'E:\STangWork\STangFiles\各省重点项目：2020年起')
+    batch_flag = False
+
+    if batch_flag:
+        main(r'E:\STangWork\STangFiles\各省重点项目：2020年起')
+    else:
+        file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
+        # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
+        with open(full_path, 'rb') as f:
+            data = f.read()
+
+        lines,_ = ocr_image_bytes(data)
+        for ln in lines:
+            print(ln)
+        print('='*30,len(lines))
