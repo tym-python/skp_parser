@@ -89,7 +89,7 @@ def _detect_title_rows(
     phys_rows: List[List[Dict]],
     avg_h: float,
     img_width: int,
-) -> int:
+) :
     """检测顶部标题占据的物理行数（不含表头）。
 
     标题特征（满足任一即判为标题）：
@@ -104,6 +104,7 @@ def _detect_title_rows(
         return 0
 
     title_count = 0
+    HEADER_UNIT_itme = []
     for row in phys_rows[:5]:
         tallest = max(row, key=lambda x: x['h'])
         text = ''.join(x['text'] for x in row)
@@ -111,24 +112,21 @@ def _detect_title_rows(
 
         if any(kw in text for kw in TITLE_KEYWORDS):
             title_count += 1
-            print(f'title：{text_clean}')
             continue
         if UNIT_LINE_RE.search(text_clean):
-            print(f'金额单位：{text_clean}')
+            HEADER_UNIT_itme.append(text_clean)
             title_count += 1
             continue
         if tallest['h'] > avg_h * 1.2 and tallest['w'] > img_width * 0.4:
             title_count += 1
-            print(f'title：{text_clean}')
             continue
         if tallest['h'] > avg_h * 1.2 and len(row) == 1:
             title_count += 1
-            print(f'title：{text_clean}')
             continue
 
         break
 
-    return title_count
+    return title_count,HEADER_UNIT_itme
 
 
 def _remove_title_and_unit_rows(
@@ -144,7 +142,7 @@ def _remove_title_and_unit_rows(
         return items
 
     phys_rows = _split_physical_rows(items, avg_h)
-    title_n = _detect_title_rows(phys_rows, avg_h, img_width)
+    title_n,HEADER_UNIT_itme = _detect_title_rows(phys_rows, avg_h, img_width)
     if title_n <= 0:
         return items
 
@@ -481,7 +479,7 @@ def _build_columns_from_vertical_lines(
     if header_items:
         n_headers = len(header_items)
         if n_headers < n_cols * 0.5 or n_headers > n_cols * 2.5:
-            print(f'竖线列数与表头 items 数不匹配: n_cols={n_cols}, n_headers={n_headers}')
+            # print(f'竖线列数与表头 items 数不匹配: n_cols={n_cols}, n_headers={n_headers}')
             return []
 
     col_defs = [
@@ -693,10 +691,8 @@ def reconstruct_table_by_header(
         vertical_lines, img_width, header_items, avg_h,
     )
     if not col_defs or not _validate_vertical_columns(col_defs, header_items):
-        print('竖线定列失败，降级为段落模式')
         return _fallback_paragraph(items), 'lines'
 
-    print(f'用竖线定列，共 {len(col_defs)} 列')
 
     # ------------------------------------------------------------
     # 步骤 5：找锚点列（项目名称）
