@@ -36,6 +36,58 @@ def _get_engine():
         _rapid_engine = RapidOCR()
     return _rapid_engine
 
+# 中文字符
+_CN_RE = re.compile(r'[\u4e00-\u9fff]')
+# 数字 + 英文字母
+_ALNUM_RE = re.compile(r'[0-9A-Za-z]')
+
+# 乱码判断
+def _garbage_score(items: List[Dict]) -> float:
+    """计算 OCR 结果的"乱码分"，0~1，越高越乱。
+
+    判据（每项命中加 0.25，满分 1.0）：
+      1. 中文字符占比 < 15%
+      2. 短文本（len <= 2）占比 > 60%
+      3. 平均文本长度 < 3
+      4. 非中非字母数字的符号占比 > 40%
+    """
+    if not items:
+        return 1.0
+
+    n = len(items)
+    all_text = ''.join(it['text'] for it in items)
+    if not all_text:
+        return 1.0
+
+    total = len(all_text)
+    cn = len(_CN_RE.findall(all_text))
+    alnum = len(_ALNUM_RE.findall(all_text))
+    punct = total - cn - alnum
+
+    short_ratio = sum(1 for it in items if len(it['text']) <= 2) / n
+
+    score = 0.0
+    if cn / total < 0.5:
+        score += 0.25
+    if short_ratio > 0.6:
+        score += 0.25
+    if alnum/total > 0.5:
+        score += 0.25
+    if punct / total > 0.3:
+        score += 0.25
+    return score
+
+
+def _is_garbage_ocr(items: List[Dict], threshold: float = 0.5) -> bool:
+    """判定 OCR 结果是否基本是乱码，返回 True 表示应该跳过解析。"""
+    if not items:
+        return True
+    # 文本块太少，也不值得解析
+    if len(items) < 5:
+        return True
+
+    return _garbage_score(items) >= threshold
+
 # ============================================================
 # 1. OCR 结果 → items
 # ============================================================
@@ -52,7 +104,7 @@ def parse_items(result) -> List[Dict[str, Any]]:
     for poly, text in zip(result.boxes, result.txts):
         # 文本清洗：页码 / 页脚 / 水印
         text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
-        text = re.sub(r'^\s*-\s*\d+\s*-\s*$', ' ', text).strip()
+        text = re.sub(r'^\s*[一\-—–－]\s*\d+\s*[一\-—–－]\s*$', ' ', text).strip()
         watermark = re.fullmatch(r'基建通|建通', text)
         if not text:
             continue
@@ -181,23 +233,30 @@ def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
     rows.append(curr)
     return rows
 
+# ============================================================
+# 4. 表格线检测（横 / 竖）
+# ============================================================
+# 两个方向的检测思路：
+#   - 横线：投影法（一行暗像素总数）
+#   - 竖线：暗像素总量 + 最长连续段 双条件
+# 二者都会把相邻 gap 内的线合并为一条。
+# ============================================================
 
-# ============================================================
-# 4. 表格线检测（横 / 竖 通用）
-# ============================================================
-# ============================================================
-# 公共工具：合并相邻的线
-# ============================================================
+
+# ------------------------------------------------------------
+# 4.1 公共工具：合并相邻的线
+# ------------------------------------------------------------
 def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
-    """把升序的坐标索引合并为若干条线。
+    """把升序坐标索引合并为若干条线。
 
-    相邻索引差 <= gap 视为同一条粗线，取均值作为该线的坐标。
+    相邻索引差 <= gap 视为同一条粗线，取均值作为该线坐标。
     """
     if len(indices) == 0:
         return []
 
     lines: List[float] = []
-    group = [int(indices[0])]
+    group: List[int] = [int(indices[0])]
+
     for i in indices[1:]:
         i = int(i)
         if i - group[-1] <= gap:
@@ -205,28 +264,29 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
         else:
             lines.append(float(np.mean(group)))
             group = [i]
+
     lines.append(float(np.mean(group)))
     return lines
 
 
-# ============================================================
-# 横线检测：形态学开运算
-# ============================================================
+# ------------------------------------------------------------
+# 4.2 横线检测：投影法
+# ------------------------------------------------------------
 def _detect_horizontal_lines(
     img: np.ndarray,
-    min_width_ratio: float = 0.5,
-    min_px: int = 20,
-    threshold_val: int = 200,
+    min_total_ratio: float = 0.3,
+    min_px: int = 30,
+    threshold_val: int = 230,
 ) -> List[float]:
-    """检测长横线，返回 y 坐标升序列表。
+    """横线检测：投影法。
 
-    思路：形态学开运算只保留长度 >= max(min_px, 图宽 * min_width_ratio) 的横线。
-    相邻 3px 内的横线会合并为一条。
+    统计每行的暗像素数量，超过阈值即视为横线。
+    阈值 = max(min_px, 图宽 * min_total_ratio)。
 
     参数：
-        min_width_ratio: 横线最小长度 / 图宽
-        min_px:          横线最小像素长度（保底，防止小图 ratio 失效）
-        threshold_val:   二值化阈值
+        min_total_ratio: 一行暗像素 / 图宽 的下限
+        min_px:          绝对下限（防止小图 ratio 失效）
+        threshold_val:   二值化阈值（放宽到 230 兼容灰阶扫描）
     """
     if img is None or img.size == 0:
         return []
@@ -234,19 +294,19 @@ def _detect_horizontal_lines(
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
 
-    kw = max(min_px, int(img.shape[1] * min_width_ratio))
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kw, 1))
-    horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+    # 每行暗像素数
+    row_dark = binary.sum(axis=1) // 255
 
-    # 每一行是否有横线
-    proj = horizontal.sum(axis=1) // 255
-    idxs = np.where(proj > 0)[0]
-    return _merge_adjacent_lines(idxs)
+    # 阈值
+    threshold = max(min_px, int(img.shape[1] * min_total_ratio))
+    rows = np.where(row_dark > threshold)[0]
+
+    return _merge_adjacent_lines(rows)
 
 
-# ============================================================
-# 竖线检测：暗像素总量 + 最长连续段 双条件
-# ============================================================
+# ------------------------------------------------------------
+# 4.3 竖线检测：暗像素总量 + 最长连续段
+# ------------------------------------------------------------
 def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
     """计算每一列的最长连续 1 段长度。
 
@@ -255,7 +315,7 @@ def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
     返回：
         长度 W 的数组，第 x 项是第 x 列最长的连续 1 段长度
     """
-    H, W = binary_01.shape
+    H, _ = binary_01.shape
 
     # runs[y, x] = 以 (y, x) 结尾的连续 1 长度
     runs = np.zeros_like(binary_01)
@@ -294,7 +354,7 @@ def _detect_vertical_lines(
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
 
-    H, W = binary.shape
+    H, _ = binary.shape
     b = (binary > 0).astype(np.int32)
 
     # 条件 1：每列暗像素总数
@@ -312,6 +372,7 @@ def _detect_vertical_lines(
     cols = np.where(mask)[0]
 
     return _merge_adjacent_lines(cols)
+
 # ============================================================
 # 5. 按横线硬边界切分单元格
 # ============================================================
@@ -526,7 +587,39 @@ def _validate_vertical_columns(
 
     return True
 
+# =============================================
+# 匹配表头之后清除空列
+# =============================================
+def _remove_empty_columns(
+    col_defs: List[Dict],
+    body_items: List[Dict],
+) -> List[Dict]:
+    """移除"表头为空 且 无数据"的空列。
 
+    判据：
+      - 表头非空 → 保留
+      - 表头为空，但该列 x 区间内有 body items → 保留（跨列表头场景）
+      - 表头为空，且该列 x 区间内无 body items → 移除
+    """
+    if not col_defs:
+        return col_defs
+
+    kept: List[Dict] = []
+    for c in col_defs:
+        # 表头非空 → 保留
+        if c['header'].strip():
+            kept.append(c)
+            continue
+        # 表头为空，看数据区是否有 items 落入
+        has_body = any(c['x0'] <= it['xc'] < c['x1'] for it in body_items)
+        if has_body:
+            kept.append(c)
+
+    removed = len(col_defs) - len(kept)
+    if removed > 0:
+        print(f'移除 {removed} 个空列')
+
+    return kept
 # ============================================================
 # 8. 把 item 分配到某一列
 # ============================================================
@@ -685,7 +778,7 @@ def reconstruct_table_by_header(
         return _fallback_paragraph(items), 'lines'
 
     # ------------------------------------------------------------
-    # 步骤 4：竖线定列 + 校验
+    # 步骤 4：竖线定列 + 校验 + 清除空列
     # ------------------------------------------------------------
     col_defs = _build_columns_from_vertical_lines(
         vertical_lines, img_width, header_items, avg_h,
@@ -693,6 +786,10 @@ def reconstruct_table_by_header(
     if not col_defs or not _validate_vertical_columns(col_defs, header_items):
         return _fallback_paragraph(items), 'lines'
 
+    # ★ 新增：去除空列
+    col_defs = _remove_empty_columns(col_defs, body_items)
+    if len(col_defs) < 2:
+        return _fallback_paragraph(items), 'lines'
 
     # ------------------------------------------------------------
     # 步骤 5：找锚点列（项目名称）
@@ -790,8 +887,10 @@ def _fallback_paragraph(items: List[Dict]) -> List[str]:
 def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
     """图片字节 → (result, mode)。
 
-    mode='table' → result 是 List[List[str]]，第一行为表头
-    mode='lines' → result 是 List[str]，每行一段文本
+    返回：
+      - (result, 'table')：result 是 List[List[str]]
+      - (result, 'lines')：result 是 List[str]
+      - ([], None)     ：OCR 结果疑似乱码或无法识别，调用方应跳过
     """
     if not data:
         return [], None
@@ -805,7 +904,15 @@ def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
         if not items:
             return [], None
 
-        return reconstruct_table_by_header(items, img=img)
+        # ★ 乱码检测：直接跳过解析
+        if _is_garbage_ocr(items):
+            score = _garbage_score(items)
+            print(f'OCR 结果疑似乱码（items={len(items)}, 乱码分={score:.2f}），跳过解析')
+            return [], None
+
+        res_list, parse_type = reconstruct_table_by_header(items, img=img)
+
+        return res_list, parse_type
 
     except Exception as ex:
         traceback.print_exc()
@@ -889,8 +996,8 @@ if __name__ == "__main__":
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\19湖北省2026年重点项目清单\2026年荆州市\荆州市2026年省级重点项目清单.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南1.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\11.jpg'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
