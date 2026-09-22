@@ -23,10 +23,7 @@ from typing import List, Dict, Any, Tuple, Optional
 import cv2
 import numpy as np
 
-from parser.field_mapping import HEADER_ALIASES   # 保留导出，供外部引用
-
 _rapid_engine = None
-
 
 # ============================================================
 # 0. 引擎：延迟初始化 RapidOCR
@@ -38,7 +35,6 @@ def _get_engine():
         from rapidocr import RapidOCR
         _rapid_engine = RapidOCR()
     return _rapid_engine
-
 
 # ============================================================
 # 1. OCR 结果 → items
@@ -57,8 +53,10 @@ def parse_items(result) -> List[Dict[str, Any]]:
         # 文本清洗：页码 / 页脚 / 水印
         text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
         text = re.sub(r'^\s*-\s*\d+\s*-\s*$', ' ', text).strip()
-        text = re.sub(r'基建通', '', text).strip()
+        watermark = re.fullmatch(r'基建通|建通', text)
         if not text:
+            continue
+        if watermark:
             continue
 
         xs = [float(p[0]) for p in poly]
@@ -81,7 +79,7 @@ def parse_items(result) -> List[Dict[str, Any]]:
 # 标题关键字：命中即判为标题
 TITLE_KEYWORDS = (
     '项目清单', '清单汇总', '项目分布', '重点项目', '项目计划表',
-    '建设项目清单', '项目表', '项目一览', '项目汇总',
+    '建设项目清单', '项目表', '项目一览', '项目汇总','项目名单',
 )
 # 金额单位行正则，如"金额单位：万元"、"单位：亿元"
 UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
@@ -113,15 +111,19 @@ def _detect_title_rows(
 
         if any(kw in text for kw in TITLE_KEYWORDS):
             title_count += 1
+            print(f'title：{text_clean}')
             continue
         if UNIT_LINE_RE.search(text_clean):
+            print(f'金额单位：{text_clean}')
             title_count += 1
             continue
         if tallest['h'] > avg_h * 1.2 and tallest['w'] > img_width * 0.4:
             title_count += 1
+            print(f'title：{text_clean}')
             continue
         if tallest['h'] > avg_h * 1.2 and len(row) == 1:
             title_count += 1
+            print(f'title：{text_clean}')
             continue
 
         break
@@ -147,7 +149,7 @@ def _remove_title_and_unit_rows(
         return items
 
     to_exclude = {id(it) for row in phys_rows[:title_n] for it in row}
-    print(f'移除顶部 {title_n} 行（标题/单位），共 {len(to_exclude)} 个 items')
+    # print(f'移除顶部 {title_n} 行（标题/单位），共 {len(to_exclude)} 个 items')
     return [it for it in items if id(it) not in to_exclude]
 
 
@@ -185,45 +187,22 @@ def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
 # ============================================================
 # 4. 表格线检测（横 / 竖 通用）
 # ============================================================
-def _detect_lines_1d(
-    img: np.ndarray,
-    orientation: str,
-    min_ratio: float,
-    min_px: int,
-) -> List[float]:
-    """通用的一维线检测（横竖共用）。
+# ============================================================
+# 公共工具：合并相邻的线
+# ============================================================
+def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
+    """把升序的坐标索引合并为若干条线。
 
-    orientation='h' → 检测横线，返回 y 坐标升序列表
-    orientation='v' → 检测竖线，返回 x 坐标升序列表
-    相邻 3px 内的线会被合并为一条。
+    相邻索引差 <= gap 视为同一条粗线，取均值作为该线的坐标。
     """
-    if img is None or img.size == 0:
+    if len(indices) == 0:
         return []
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
-
-    if orientation == 'h':
-        # 横向形态学：保留长横线
-        kw = max(min_px, int(img.shape[1] * min_ratio))
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kw, 1))
-        proj = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel).sum(axis=1) // 255
-    else:
-        # 竖向形态学：保留长竖线
-        kh = max(min_px, int(img.shape[0] * min_ratio))
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, kh))
-        proj = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel).sum(axis=0) // 255
-
-    idxs = np.where(proj > 0)[0]
-    if len(idxs) == 0:
-        return []
-
-    # 相邻 3px 内的线合并为一条
     lines: List[float] = []
-    group = [int(idxs[0])]
-    for i in idxs[1:]:
+    group = [int(indices[0])]
+    for i in indices[1:]:
         i = int(i)
-        if i - group[-1] <= 3:
+        if i - group[-1] <= gap:
             group.append(i)
         else:
             lines.append(float(np.mean(group)))
@@ -232,23 +211,109 @@ def _detect_lines_1d(
     return lines
 
 
+# ============================================================
+# 横线检测：形态学开运算
+# ============================================================
 def _detect_horizontal_lines(
     img: np.ndarray,
     min_width_ratio: float = 0.5,
+    min_px: int = 20,
+    threshold_val: int = 200,
 ) -> List[float]:
-    """检测长横线，返回 y 坐标升序列表。"""
-    return _detect_lines_1d(img, 'h', min_width_ratio, min_px=20)
+    """检测长横线，返回 y 坐标升序列表。
+
+    思路：形态学开运算只保留长度 >= max(min_px, 图宽 * min_width_ratio) 的横线。
+    相邻 3px 内的横线会合并为一条。
+
+    参数：
+        min_width_ratio: 横线最小长度 / 图宽
+        min_px:          横线最小像素长度（保底，防止小图 ratio 失效）
+        threshold_val:   二值化阈值
+    """
+    if img is None or img.size == 0:
+        return []
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
+
+    kw = max(min_px, int(img.shape[1] * min_width_ratio))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (kw, 1))
+    horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+    # 每一行是否有横线
+    proj = horizontal.sum(axis=1) // 255
+    idxs = np.where(proj > 0)[0]
+    return _merge_adjacent_lines(idxs)
+
+
+# ============================================================
+# 竖线检测：暗像素总量 + 最长连续段 双条件
+# ============================================================
+def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
+    """计算每一列的最长连续 1 段长度。
+
+    参数：
+        binary_01: 0/1 二值矩阵，shape (H, W)
+    返回：
+        长度 W 的数组，第 x 项是第 x 列最长的连续 1 段长度
+    """
+    H, W = binary_01.shape
+
+    # runs[y, x] = 以 (y, x) 结尾的连续 1 长度
+    runs = np.zeros_like(binary_01)
+    runs[0] = binary_01[0]
+    for y in range(1, H):
+        runs[y] = (runs[y - 1] + 1) * binary_01[y]
+
+    return runs.max(axis=0)
 
 
 def _detect_vertical_lines(
     img: np.ndarray,
-    min_height_ratio: float = 0.3,
-    min_length_px: int = 30,
+    min_total_ratio: float = 0.3,        # 总暗像素至少占图高 30%
+    min_continuous_ratio: float = 0.15,  # 最长连续段至少占图高 15%
+    threshold_val: int = 180,
 ) -> List[float]:
-    """检测长竖线，返回 x 坐标升序列表。"""
-    return _detect_lines_1d(img, 'v', min_height_ratio, min_px=min_length_px)
+    """竖线检测：暗像素总量 + 最长连续段 双条件。
 
+    不要求竖线贯穿整图（表格中常有汇总行横跨，打断竖线），
+    但要求同时满足：
+      1. 该列暗像素总数 >= 图高 * min_total_ratio
+      2. 该列最长连续暗像素段 >= 图高 * min_continuous_ratio
 
+    条件 1 过滤稀疏的笔画；
+    条件 2 过滤文字竖笔画（它们连续段很短）。
+    两者都满足的才判为真实表格竖线。
+
+    参数：
+        min_total_ratio:      总暗像素占比下限
+        min_continuous_ratio: 最长连续段占比下限
+        threshold_val:        二值化阈值
+    """
+    if img is None or img.size == 0:
+        return []
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
+
+    H, W = binary.shape
+    b = (binary > 0).astype(np.int32)
+
+    # 条件 1：每列暗像素总数
+    col_total = b.sum(axis=0)
+
+    # 条件 2：每列最长连续暗像素段
+    col_max_run = _compute_max_run_per_column(b)
+
+    # 阈值
+    min_total = int(H * min_total_ratio)
+    min_cont = int(H * min_continuous_ratio)
+
+    # 同时满足两个条件才算竖线
+    mask = (col_total >= min_total) & (col_max_run >= min_cont)
+    cols = np.where(mask)[0]
+
+    return _merge_adjacent_lines(cols)
 # ============================================================
 # 5. 按横线硬边界切分单元格
 # ============================================================
@@ -303,48 +368,57 @@ def _detect_header_by_lines(
 ) -> Tuple[List[Dict], List[Dict]]:
     """用横线定位表头。
 
-    策略：
-      - horizontal_lines[0] 通常是表格上边框
-      - 从 horizontal_lines[1] 开始找第一条"到上边框的距离能容纳 1~3 行文字"的线
-        作为表头下边界
-      - 若表格没有上边框（lines[0] 就是表头下边界），兼容处理
+    思路：
+      在 horizontal_lines[0..3] 中选一条线作为表头下边界，
+      使得该线"上方 items 数"和"下方 items 数"都 >= 2，
+      并且上方 items 的 y 范围最紧凑（即最像表头）。
 
     返回 (header_items, body_items)；不可靠时返回 ([], items)。
     """
-    if not horizontal_lines:
+    if not horizontal_lines or not items:
         return [], items
 
-    # 若只有一条横线，无法区分表头/数据
-    if len(horizontal_lines) < 2:
-        return [], items
+    # 收集候选线：前 4 条（含 lines[0]）
+    candidates = horizontal_lines[:4]
 
-    top = horizontal_lines[0]
-    header_bottom = None
+    best_score = -1.0
+    best_bottom = None
 
-    # 从第二条横线开始找
-    for i in range(1, min(4, len(horizontal_lines))):
-        h = horizontal_lines[i] - top
-        rows_est = h / avg_h if avg_h > 0 else 0
-        if 0.8 <= rows_est <= 3.5:
-            header_bottom = horizontal_lines[i]
-            break
+    for bottom in candidates:
+        above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
+        below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
 
-    if header_bottom is None:
-        return [], items
-
-    header_items: List[Dict] = []
-    body_items: List[Dict] = []
-
-    for it in items:
-        if not (it.get('text') or '').strip():
+        # 上方和下方都必须有足够 items
+        if len(above) < 2 or len(below) < 2:
             continue
-        it_yc = (it['y0'] + it['y1']) / 2.0
-        if it_yc < header_bottom:
-            header_items.append(it)
-        else:
-            body_items.append(it)
 
-    if len(header_items) < 2 or not body_items:
+        # 打分：上方 items 的 y 跨度越小越像表头（表头通常 1~3 行）
+        y_min = min(it['y0'] for it in above)
+        y_max = max(it['y1'] for it in above)
+        span = y_max - y_min
+        rows_est = span / avg_h if avg_h > 0 else 0
+
+        # 只接受 0.8~3.5 行的跨度
+        if not (0.8 <= rows_est <= 3.5):
+            continue
+
+        # 越接近 1 行越好
+        score = 1.0 / (1.0 + abs(rows_est - 1.0))
+        if score > best_score:
+            best_score = score
+            best_bottom = bottom
+
+    if best_bottom is None:
+        return [], items
+
+    header_items = [it for it in items
+                    if (it['y0'] + it['y1']) / 2 < best_bottom
+                    and (it.get('text') or '').strip()]
+    body_items = [it for it in items
+                  if (it['y0'] + it['y1']) / 2 >= best_bottom
+                  and (it.get('text') or '').strip()]
+
+    if len(header_items) < 2 or len(body_items) < 2:
         return [], items
 
     return header_items, body_items
@@ -593,13 +667,13 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     horizontal_lines = _detect_horizontal_lines(img) if img is not None else []
     vertical_lines = _detect_vertical_lines(img) if img is not None else []
-    print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
+    # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
 
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
     # ------------------------------------------------------------
     if len(horizontal_lines) < 3 or len(vertical_lines) < 2:
-        print('表格线不足，降级为段落模式')
+        # print('表格线不足，降级为段落模式')
         return _fallback_paragraph(items), 'lines'
 
     # ------------------------------------------------------------
@@ -609,7 +683,7 @@ def reconstruct_table_by_header(
         items, horizontal_lines, avg_h,
     )
     if not header_items or not body_items:
-        print('表格线定表头失败，降级为段落模式')
+        # print('表格线定表头失败，降级为段落模式')
         return _fallback_paragraph(items), 'lines'
 
     # ------------------------------------------------------------
@@ -813,10 +887,23 @@ if __name__ == "__main__":
         main(r'E:\STangWork\STangFiles\各省重点项目：2020年起')
     else:
         # file_path= r"2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\15.jpg"
-        file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
+        # file_path= r"2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\5.jpg"
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起' +'\\'+ file_path
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\19湖北省2026年重点项目清单\2026年荆州市\荆州市2026年省级重点项目清单.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南1.png'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
+        # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
+        # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
+        # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png
+        # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\荆州市2024年\荆州市2024年省级重点项目清单.png'''
+        # for file in t.split('\n'):
+        #     if not file:
+        #         continue
+        #     print(file)
         with open(full_path, 'rb') as f:
             data = f.read()
 

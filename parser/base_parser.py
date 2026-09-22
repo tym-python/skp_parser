@@ -848,7 +848,7 @@ class BaseParser(ABC):
             if name.replace(' ', '').startswith(('合计', '总计', '小计')):
                 continue
             # 单位说明行(如 "金额单位:万元" / "单位：万元")不作为项目
-            if re.search(r'(?:金额)?单位\s*[:：]\s*[万|亿]元', name):
+            if re.search(r'(?:金额)?单位\s*[:：]\s*[万亿]元', name):
                 continue
             if name in ('项目名称', '序号', '名称'):
                 continue  # 跨页重复表头行
