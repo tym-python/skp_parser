@@ -16,7 +16,7 @@ from parser.base_parser import BaseParser
 from util.log_util import get_logger
 import cv2
 import numpy as np
-from parser.ocr_to_tablelines import reconstruct_table_by_header,parse_items
+from parser.ocr_to_tablelines import ocr_image_bytes
 logger = get_logger(__file__)
 
 # PaddleOCR 懒加载单例(初始化约数秒,首个图片文件时触发)
@@ -45,29 +45,6 @@ def _get_engine() -> Any:
             # }
         )
     return _rapid_engine
-
-def ocr_image_bytes(data: bytes) -> List[str]:
-    """图片字节 → 文本行列表(按 y 分组成行、行内按 x 排序,空格连接)。
-
-    失败(解码不了/OCR 异常/无文本)返回空列表,不抛异常。
-    """
-    if not data:
-        return [],None
-    try:
-        img = cv2.imdecode(np.frombuffer(data, dtype=np.uint8), cv2.IMREAD_COLOR)
-        if img is None or img.size < 1000:
-            return [],None
-
-        result = _get_engine()(img)
-        items = parse_items(result)
-        if not items:
-            return [],None
-
-        return reconstruct_table_by_header(items)
-
-    except Exception as ex:
-        logger.warning(f"图片 OCR 失败: {type(ex).__name__}: {ex}")
-        return [],None
 
 def docx_image_blocks(file_path: str) -> List[bytes]:
     """按 body(正文)顺序提取 docx 内嵌图字节列表(r:embed 引用顺序)。"""

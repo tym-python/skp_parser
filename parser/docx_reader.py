@@ -18,6 +18,33 @@ logger = get_logger(__file__)
 
 _W_NS = '{http://schemas.openxmlformats.org/wordprocessingml/2006/main}'
 
+def transpose(rows, grid=None):
+    """转置 iter_blocks(with_grid=True) 拿到的 tbl 块。
+
+    rows: List[List[str]]          每行各逻辑格的文本
+    grid: List[List[(off, span)]]  与 rows 等长
+    返回: List[List[str]]          转置后的行
+    """
+    if not rows:
+        return []
+
+    if grid is None:                      # 退化情形
+        w = max(len(r) for r in rows)
+        padded = [list(r) + [None] * (w - len(r)) for r in rows]
+        return [list(col) for col in zip(*padded)]
+
+    n_rows = len(rows)
+    n_cols = max(off + span for row_g in grid for off, span in row_g)
+
+    # 1) 铺平：合并格覆盖到的每一列都填同一个值
+    full = [[None] * n_cols for _ in range(n_rows)]
+    for i, (vals, row_g) in enumerate(zip(rows, grid)):
+        for v, (off, span) in zip(vals, row_g):
+            for c in range(off, off + span):
+                full[i][c] = v
+
+    # 2) 转置
+    return [[full[i][c] for i in range(n_rows)] for c in range(n_cols)]
 
 def _lxml_text(el: Any) -> str:
     """取元素下全部 w:t 文本(含 行内 tab 转空格,忽略分隔符 run)。"""
