@@ -271,42 +271,109 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
     lines.append(float(np.mean(group)))
     return lines
 
+# ------------------------------------------------------------
+# 4.1.5 大图降采样（只缩不放）
+# ------------------------------------------------------------
+# 线检测的目标宽度：超过此宽度才降采样，小于等于则原样
+_MAX_DETECT_WIDTH = 1600
+
+def _maybe_downscale(
+    img: np.ndarray,
+    max_width: int = _MAX_DETECT_WIDTH,
+) -> Tuple[np.ndarray, float]:
+    """只对大图降采样，小图原样返回。
+
+    参数：
+        img:        BGR 图像
+        max_width:  目标最大宽度
+
+    返回：
+        (img_for_detect, scale)
+        - img_for_detect：用于线检测的图（大图缩小后，小图原图）
+        - scale：原图尺寸 / 检测图尺寸；缩略图→原图坐标换算用 1/scale
+          scale=1.0 表示未缩放
+    """
+    if img is None or img.size == 0:
+        return img, 1.0
+
+    h, w = img.shape[:2]
+    if w <= max_width:
+        # 小图不放大
+        return img, 1.0
+
+    scale = max_width / w
+    new_w = max_width
+    new_h = max(1, int(round(h * scale)))
+    small = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    return small, scale
+
 
 # ------------------------------------------------------------
 # 4.2 横线检测：投影法
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
     img: np.ndarray,
-    min_total_ratio: float = 0.5,
+    min_total_ratio: float = 0.3,      # ★ 从 0.5 降到 0.3（现在是下限约束）
     min_px: int = 30,
     threshold_val: int = 180,
-    content_width: float = None
+    content_width: float = None,
+    median_multiplier: float = 3.0,    # ★ 新增：中位数倍数
 ) -> List[float]:
-    """横线检测：投影法。
+    """横线检测：投影法 + 自适应阈值（大图自动降采样）。
 
-    统计每行的暗像素数量，超过阈值即视为横线。
-    阈值 = max(min_px, 图宽 * min_total_ratio)。
+    阈值 = max(min_px, 中位数 × median_multiplier, content_width × min_total_ratio)
+
+    - 中位数：图片内非空行的典型暗像素数，代表"文字行强度"
+    - median_multiplier：横线比文字行强多少倍才判为线
+    - content_width × min_total_ratio：绝对下限，防止中位数失效
 
     参数：
-        min_total_ratio: 一行暗像素 / 图宽 的下限
-        min_px:          绝对下限（防止小图 ratio 失效）
-        threshold_val:   二值化阈值（放宽到 230 兼容灰阶扫描）
+        min_total_ratio:    content_width 的下限系数
+        min_px:             绝对下限（防止小图 ratio 失效）
+        threshold_val:      二值化阈值
+        content_width:      表格内容宽度（原图坐标）
+        median_multiplier:  中位数倍数（越大越严格）
     """
     if img is None or img.size == 0:
         return []
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # ★ 大图降采样
+    img_detect, scale = _maybe_downscale(img)
+
+    # content_width 跟着缩放
+    if content_width is not None:
+        content_width_detect = content_width * scale
+    else:
+        content_width_detect = img_detect.shape[1]
+
+    gray = cv2.cvtColor(img_detect, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
 
     # 每行暗像素数
     row_dark = binary.sum(axis=1) // 255
 
-    # 阈值
-    threshold = max(min_px, int(content_width * min_total_ratio))
+    # ★ 中位数：只在"非空行"上统计，避免大片空白把中位数拉到 0
+    non_empty = row_dark[row_dark > 0]
+    if len(non_empty) > 0:
+        median_dark = float(np.median(non_empty))
+    else:
+        median_dark = 0.0
+
+    # ★ 混合阈值：三个约束取最大
+    threshold = max(
+        min_px,
+        int(median_dark * median_multiplier),
+        int(content_width_detect * min_total_ratio),
+    )
+
     rows = np.where(row_dark > threshold)[0]
 
-    return _merge_adjacent_lines(rows)
+    lines = _merge_adjacent_lines(rows)
 
+    # ★ 坐标映射回原图
+    if scale != 1.0:
+        lines = [y / scale for y in lines]
+    return lines
 
 # ------------------------------------------------------------
 # 4.3 竖线检测：暗像素总量 + 最长连续段
@@ -335,6 +402,7 @@ def _detect_vertical_lines(
     min_total_ratio: float = 0.3,        # 总暗像素至少占图高 30%
     min_continuous_ratio: float = 0.15,  # 最长连续段至少占图高 15%
     threshold_val: int = 180,
+    content_height : float=None
 ) -> List[float]:
     """竖线检测：暗像素总量 + 最长连续段 双条件。
 
@@ -355,10 +423,18 @@ def _detect_vertical_lines(
     if img is None or img.size == 0:
         return []
 
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    # ★ 大图降采样
+    img_detect, scale = _maybe_downscale(img)
+
+    # content_height 跟着缩放
+    if content_height is not None:
+        H = content_height * scale
+    else:
+        H = img_detect.shape[0]
+
+    gray = cv2.cvtColor(img_detect, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
 
-    H, _ = binary.shape
     b = (binary > 0).astype(np.int32)
 
     # 条件 1：每列暗像素总数
@@ -375,7 +451,12 @@ def _detect_vertical_lines(
     mask = (col_total >= min_total) & (col_max_run >= min_cont)
     cols = np.where(mask)[0]
 
-    return _merge_adjacent_lines(cols)
+    lines = _merge_adjacent_lines(cols)
+
+    # ★ 坐标映射回原图
+    if scale != 1.0:
+        lines = [x / scale for x in lines]
+    return lines
 
 # ============================================================
 # 5. 按横线硬边界切分单元格
@@ -444,10 +525,9 @@ def _detect_header_by_lines(
     # 收集候选线：前 4 条（含 lines[0]）
     candidates = horizontal_lines[:4]
 
-    best_score = -1.0
     best_bottom = None
 
-    for bottom in candidates:
+    for bottom in candidates[1:]:
         above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
         below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
 
@@ -461,10 +541,18 @@ def _detect_header_by_lines(
             if any(alias in all_text for alias in aliases)
         )
 
-        if field_hits < colnum*0.5:
-            continue
-        else:
+        if field_hits > min(colnum*0.5,5):
             best_bottom = bottom
+            break
+        else:
+            pn_hits = 0
+            for it in above:
+                text = (it.get('text') or '')
+                if any(alias in text for alias in HEADER_ALIASES.get('project_name', ())):
+                    pn_hits += 1
+            if pn_hits > 0:
+                best_bottom = bottom
+                break
 
     if best_bottom is None:
         return [], items
@@ -534,13 +622,6 @@ def _build_columns_from_vertical_lines(
     n_cols = len(lines) - 1
     if n_cols < 2:
         return []
-
-    # 列数校验：表头 items 数与列数不应悬殊
-    if header_items:
-        n_headers = len(header_items)
-        if n_headers < n_cols * 0.5 or n_headers > n_cols * 2.5:
-            # print(f'竖线列数与表头 items 数不匹配: n_cols={n_cols}, n_headers={n_headers}')
-            return []
 
     col_defs = [
         {
@@ -767,7 +848,8 @@ def reconstruct_table_by_header(
     # 步骤 1：检测横竖线
     # ------------------------------------------------------------
     content_width = max(it['x1'] for it in items) - min(it['x0'] for it in items)
-    vertical_lines = _detect_vertical_lines(img) if img is not None else []
+    content_height = max(it['y1'] for it in items) - min(it['y0'] for it in items)
+    vertical_lines = _detect_vertical_lines(img,content_height=content_height) if img is not None else []
     horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
     # showLines(img,vertical_lines,'v')
@@ -783,7 +865,7 @@ def reconstruct_table_by_header(
     # 步骤 3：横线定表头
     # ------------------------------------------------------------
     header_items, body_items = _detect_header_by_lines(
-        items, horizontal_lines, len(vertical_lines),
+        items, horizontal_lines, len(vertical_lines)-1,
     )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
@@ -1033,6 +1115,7 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\11.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\21.jpg'
         full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_141959_345.png"
+        full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_164325_553.png"
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
