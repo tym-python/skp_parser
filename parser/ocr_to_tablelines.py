@@ -19,7 +19,7 @@ import re
 import traceback
 from bisect import bisect_right
 from typing import List, Dict, Any, Tuple, Optional
-
+from parser.field_mapping import HEADER_ALIASES
 import cv2
 import numpy as np
 
@@ -40,6 +40,8 @@ def _get_engine():
 _CN_RE = re.compile(r'[\u4e00-\u9fff]')
 # 数字 + 英文字母
 _ALNUM_RE = re.compile(r'[0-9A-Za-z]')
+import regex
+_SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
 
 # 乱码判断
 def _garbage_score(items: List[Dict]) -> float:
@@ -62,6 +64,7 @@ def _garbage_score(items: List[Dict]) -> float:
     total = len(all_text)
     cn = len(_CN_RE.findall(all_text))
     alnum = len(_ALNUM_RE.findall(all_text))
+    # specnum = len(_SPEC_RE.findall(all_text))
     punct = total - cn - alnum
 
     short_ratio = sum(1 for it in items if len(it['text']) <= 2) / n
@@ -71,7 +74,7 @@ def _garbage_score(items: List[Dict]) -> float:
         score += 0.25
     if short_ratio > 0.6:
         score += 0.25
-    if alnum/total > 0.5:
+    if alnum/total > 0.3:
         score += 0.25
     if punct / total > 0.3:
         score += 0.25
@@ -105,7 +108,7 @@ def parse_items(result) -> List[Dict[str, Any]]:
         # 文本清洗：页码 / 页脚 / 水印
         text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
         text = re.sub(r'^\s*[一\-—–－]\s*\d+\s*[一\-—–－]\s*$', ' ', text).strip()
-        watermark = re.fullmatch(r'基建通|建通', text)
+        watermark = re.fullmatch(r'©?基建通|建通|©基建', text)
         if not text:
             continue
         if watermark:
@@ -274,9 +277,10 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
     img: np.ndarray,
-    min_total_ratio: float = 0.3,
+    min_total_ratio: float = 0.5,
     min_px: int = 30,
-    threshold_val: int = 230,
+    threshold_val: int = 180,
+    content_width: float = None
 ) -> List[float]:
     """横线检测：投影法。
 
@@ -298,7 +302,7 @@ def _detect_horizontal_lines(
     row_dark = binary.sum(axis=1) // 255
 
     # 阈值
-    threshold = max(min_px, int(img.shape[1] * min_total_ratio))
+    threshold = max(min_px, int(content_width * min_total_ratio))
     rows = np.where(row_dark > threshold)[0]
 
     return _merge_adjacent_lines(rows)
@@ -423,7 +427,7 @@ def _split_by_hard_boundaries(
 def _detect_header_by_lines(
     items: List[Dict],
     horizontal_lines: List[float],
-    avg_h: float,
+    colnum: int,
 ) -> Tuple[List[Dict], List[Dict]]:
     """用横线定位表头。
 
@@ -451,20 +455,15 @@ def _detect_header_by_lines(
         if len(above) < 2 or len(below) < 2:
             continue
 
-        # 打分：上方 items 的 y 跨度越小越像表头（表头通常 1~3 行）
-        y_min = min(it['y0'] for it in above)
-        y_max = max(it['y1'] for it in above)
-        span = y_max - y_min
-        rows_est = span / avg_h if avg_h > 0 else 0
+        all_text = ''.join(it['text'] for it in above)
+        field_hits = sum(
+            1 for aliases in HEADER_ALIASES.values()
+            if any(alias in all_text for alias in aliases)
+        )
 
-        # 只接受 0.8~3.5 行的跨度
-        if not (0.8 <= rows_est <= 3.5):
+        if field_hits < colnum*0.5:
             continue
-
-        # 越接近 1 行越好
-        score = 1.0 / (1.0 + abs(rows_est - 1.0))
-        if score > best_score:
-            best_score = score
+        else:
             best_bottom = bottom
 
     if best_bottom is None:
@@ -640,7 +639,8 @@ def _assign_column(xc: float, col_defs: List[Dict]) -> int:
 # ============================================================
 # 9. 单元格内文字拼接
 # ============================================================
-def _cell_text(cell_items: List[Dict], avg_h: float) -> str:
+# 同一列
+def _cell_text(cell_items: List[Dict], type: str) -> str:
     """把一个单元格内的 items 按阅读顺序拼接。
 
     先按 y 分行（行间用空格连接），行内按 x 排序（直接拼接）。
@@ -648,15 +648,25 @@ def _cell_text(cell_items: List[Dict], avg_h: float) -> str:
     if not cell_items:
         return ""
 
-    cell_items = sorted(cell_items, key=lambda x: (x['y0'], x['x0']))
+    if type == 'col':
+        cell_items = sorted(cell_items, key=lambda x: (x['y0'], x['x0']))
+    elif type == 'row':
+        cell_items = sorted(cell_items, key=lambda x: (x['x0'], x['y0']))
 
     text_lines: List[str] = []
     currline = [cell_items[0]]
 
     for it in cell_items[1:]:
-        max_y1 = max(x['y1'] for x in currline)
-        if max_y1 <= it['y0'] + it['h'] * 0.25:   # 换行
+        if type == 'col':
+            max_xy1 = max(x['y1'] for x in currline)
+        elif type == 'row':
+            max_xy1 = max(x['x1'] for x in currline)
+        if type == 'col' and max_xy1 <= it['y0'] + it['h'] * 0.25:   # 换行
             currline.sort(key=lambda x: x['x0'])
+            text_lines.append(''.join(x['text'] for x in currline))
+            currline = [it]
+        elif type == 'row' and max_xy1 <= it['x0'] + it['w'] * 0.25: # 换列
+            currline.sort(key=lambda x: x['y0'])
             text_lines.append(''.join(x['text'] for x in currline))
             currline = [it]
         else:                                      # 同行
@@ -756,10 +766,12 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     # 步骤 1：检测横竖线
     # ------------------------------------------------------------
-    horizontal_lines = _detect_horizontal_lines(img) if img is not None else []
+    content_width = max(it['x1'] for it in items) - min(it['x0'] for it in items)
     vertical_lines = _detect_vertical_lines(img) if img is not None else []
+    horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
-
+    # showLines(img,vertical_lines,'v')
+    # showLines(img,horizontal_lines,'h')
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
     # ------------------------------------------------------------
@@ -771,7 +783,7 @@ def reconstruct_table_by_header(
     # 步骤 3：横线定表头
     # ------------------------------------------------------------
     header_items, body_items = _detect_header_by_lines(
-        items, horizontal_lines, avg_h,
+        items, horizontal_lines, len(vertical_lines),
     )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
@@ -822,7 +834,7 @@ def reconstruct_table_by_header(
                 'x1': max(x['x1'] for x in cell),
                 'y0': min(x['y0'] for x in cell),
                 'y1': max(x['y1'] for x in cell),
-                'text': _cell_text(cell, avg_h),
+                'text': _cell_text(cell, 'col'),
             })
 
     if not all_cells:
@@ -876,7 +888,7 @@ def _fallback_paragraph(items: List[Dict]) -> List[str]:
 
     lines.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
     return [
-        ' '.join(x['text'] for x in sorted(l, key=lambda y: y['x0']))
+        _cell_text(l,'row')
         for l in lines
     ]
 
@@ -982,6 +994,28 @@ def main(root_path):
 
     print(f"共在 {count} 个文件夹中各找到 1 张图片。")
 
+def showLines(img,lines,type:''):
+    color = (0, 0, 255)  # BGR，红色
+    h, w = img.shape[:2]
+    thickness = 2  # 线宽
+
+    if type == 'h':
+        for y in lines:
+            y_int = int(round(y))
+            if 0 <= y_int < h:  # 越界的跳过，避免报错
+                cv2.line(img, (0, y_int), (w - 1, y_int), color, thickness)
+            else:
+                print(f"跳过越界的 y = {y_int}")
+    elif type == 'v':
+        for x in lines:
+            x_int = int(round(x))
+            if 0 <= x_int < w:  # 越界的跳过，避免报错
+                cv2.line(img, (x_int, 0), (x_int, h - 1), color, thickness)
+            else:
+                print(f"跳过越界的 y = {x_int}")
+
+    cv2.imwrite("output_lines.jpg", img)
+    print("已保存到 output_lines.jpg")
 
 if __name__ == "__main__":
     batch_flag = False
@@ -997,6 +1031,9 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\11.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\21.jpg'
+        full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_141959_345.png"
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
