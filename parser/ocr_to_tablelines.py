@@ -857,9 +857,17 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
     # ------------------------------------------------------------
-    if len(horizontal_lines) < 3 or len(vertical_lines) < 2:
-        # print('表格线不足，降级为段落模式')
-        return _fallback_paragraph(items), 'lines'
+    n_h = len(horizontal_lines)
+    n_v = len(vertical_lines)
+
+    if n_h > 3 and n_v > 2:
+        pass
+    else:
+        return _fallback_paragraph(
+            items,
+            horizontal_lines=horizontal_lines,
+            vertical_lines=vertical_lines,
+        ), 'lines'
 
     # ------------------------------------------------------------
     # 步骤 3：横线定表头
@@ -869,7 +877,11 @@ def reconstruct_table_by_header(
     )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
-        return _fallback_paragraph(items), 'lines'
+        return _fallback_paragraph(
+            items,
+            horizontal_lines=horizontal_lines,
+            vertical_lines=vertical_lines,
+        ), 'lines'
 
     # ------------------------------------------------------------
     # 步骤 4：竖线定列 + 校验 + 清除空列
@@ -878,7 +890,11 @@ def reconstruct_table_by_header(
         vertical_lines, img_width, header_items, avg_h,
     )
     if not col_defs or not _validate_vertical_columns(col_defs, header_items):
-        return _fallback_paragraph(items), 'lines'
+        return _fallback_paragraph(
+            items,
+            horizontal_lines=horizontal_lines,
+            vertical_lines=vertical_lines,
+        ), 'lines'
 
     # ★ 新增：去除空列
     col_defs = _remove_empty_columns(col_defs, body_items)
@@ -945,34 +961,107 @@ def reconstruct_table_by_header(
 # ============================================================
 # 12. 降级：段落模式
 # ============================================================
-def _fallback_paragraph(items: List[Dict]) -> List[str]:
-    """无法识别为表格时，按 y 分行输出纯文本行。
+def _fallback_paragraph(
+    items: List[Dict],
+    horizontal_lines: Optional[List[float]] = None,
+    vertical_lines: Optional[List[float]] = None,
+) -> List[str]:
+    """无法识别为表格时，按行输出纯文本。
 
-    每行内 items 按 x 排序，空格拼接。
+    三种模式：
+      1. 无横竖线 → y 聚类切行，行内按 x 拼接（原逻辑）
+      2. 有横线   → 横线硬边界切行，行内按 x 拼接
+      3. 有竖线   → 行内按列分组，列间 ' | ' 连接
+
+    参数：
+        items:            OCR items
+        horizontal_lines: 横线 y 坐标（可选）
+        vertical_lines:   竖线 x 坐标（可选）
+
+    返回：List[str]，每行一段文本。
     """
     if not items:
         return []
 
     avg_h = sum(it['h'] for it in items) / len(items)
-    items_sorted = sorted(items, key=lambda x: (x['y0'], x['x0']))
 
-    lines: List[List[Dict]] = []
-    for it in items_sorted:
-        placed = False
-        for line in lines:
-            line_yc = sum(x['yc'] for x in line) / len(line)
-            if abs(it['yc'] - line_yc) < avg_h * 1.2:
-                line.append(it)
-                placed = True
-                break
-        if not placed:
-            lines.append([it])
+    # ---------- 1) 确定行分组 ----------
+    has_h = horizontal_lines is not None and len(horizontal_lines) >= 2
+    has_v = vertical_lines is not None and len(vertical_lines) >= 2
 
-    lines.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
-    return [
-        _cell_text(l,'row')
-        for l in lines
-    ]
+    if has_h:
+        # 横线硬边界切行
+        boundaries = sorted(horizontal_lines)
+        y_min = min(it['y0'] for it in items)
+        y_max = max(it['y1'] for it in items)
+        if boundaries[0] > y_min:
+            boundaries = [y_min - 1.0] + boundaries
+        if boundaries[-1] < y_max:
+            boundaries = boundaries + [y_max + 1.0]
+        row_groups = _split_by_hard_boundaries(items, boundaries)
+    else:
+        # 原逻辑：y 中心聚类
+        items_sorted = sorted(items, key=lambda x: (x['y0'], x['x0']))
+        row_groups: List[List[Dict]] = []
+        for it in items_sorted:
+            placed = False
+            for line in row_groups:
+                line_yc = sum(x['yc'] for x in line) / len(line)
+                if abs(it['yc'] - line_yc) < avg_h * 1.2:
+                    line.append(it)
+                    placed = True
+                    break
+            if not placed:
+                row_groups.append([it])
+        row_groups.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
+
+    # ---------- 2) 确定列定义（有竖线时） ----------
+    col_defs: Optional[List[Dict]] = None
+    if has_v:
+        col_defs = _build_columns_from_vertical_lines(
+            vertical_lines,
+            img_width=10**9,    # 大值，避免内部补左右边界
+            header_items=None,
+            avg_h=avg_h,
+        )
+        if not col_defs or len(col_defs) < 2:
+            col_defs = None
+
+    # ---------- 3) 逐行渲染 ----------
+    result: List[str] = []
+    for row in row_groups:
+        if not row:
+            continue
+
+        if col_defs is None:
+            # 无列：按 x 排序拼接（原逻辑）
+            row_sorted = sorted(row, key=lambda x: x['x0'])
+            text = _cell_text(row_sorted, 'row')
+            if text.strip():
+                result.append(text)
+        else:
+            # 有列：按列分组
+            n = len(col_defs)
+            cells: List[List[Dict]] = [[] for _ in range(n)]
+            for it in row:
+                cells[_assign_column(it['xc'], col_defs)].append(it)
+
+            cell_texts: List[str] = []
+            for cell in cells:
+                if not cell:
+                    cell_texts.append('')
+                    continue
+                cell_sorted = sorted(cell, key=lambda x: (x['y0'], x['x0']))
+                cell_texts.append(''.join(it['text'] for it in cell_sorted))
+
+            # 去尾部空列
+            while cell_texts and not cell_texts[-1]:
+                cell_texts.pop()
+
+            if any(c.strip() for c in cell_texts):
+                result.append(' '.join(cell_texts))
+
+    return result
 
 
 # ============================================================
