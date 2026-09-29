@@ -30,7 +30,7 @@ CATEGORY_WEAK_WORDS = (
     '绿化', '城市更新', '保障房', '棚改', '老旧小区', '供水', '排水', '燃气',
     '供热', '休闲', '康养', '应急', '安全', '资源', '粮食', '冷链', '革命',
     '新材料', '房地产', '领域', '类','国铁干线', '航道整治','天然气发电',
-    '城市建设','城市道路','国省','航空', '体系', '类','油气开发','风力发电','其他工业产业',
+    '城市建设','城市道路','国省','航空', '体系', '油气开发','风力发电','其他工业产业',
 )
 CATEGORY_Supplement_WORDS = (
     # 部分被识别成项目的分类，全等
@@ -40,13 +40,16 @@ CATEGORY_Supplement_WORDS = (
     '一产项目','二产项目','三产项目',
 )
 PROJECT_TYPE_WORDS = (
-    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进'
+    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进', '计划新开工','计划建成',''
 )
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
 CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
+
+from parser.ocr_to_tablelines import TITLE_KEYWORDS
+TITLE_PATTERN = '|'.join(map(re.escape, TITLE_KEYWORDS))
 
 # 兜底分支(序号+分类标题)护栏参数:update_category_context 的兜底把"去序号、
 # 去括号统计后"的整段文本当分类名,但整段实为 项目名称+建设内容 拼接的业务数据行
@@ -141,7 +144,7 @@ class BaseParser(ABC):
     # ---------- 公共逻辑 ----------
 
     @staticmethod
-    def find_header(rows: List[List[Any]], max_scan: int = 6
+    def find_header(rows: List[List[Any]], max_scan: int = 6, file_year:int =0
                     ) -> Tuple[Optional[Dict[int, str]], int]:
         """在表格行中定位表头行,返回 (列映射, 表头行索引)。
 
@@ -152,7 +155,7 @@ class BaseParser(ABC):
            两列表;单格 >30 字的备注行排除)。
         """
         for idx, row in enumerate(rows[:max_scan]):
-            header_map = build_header_map(row)
+            header_map = build_header_map(row,file_year)
             if len(header_map) >= 2:
                 return header_map, idx
         for idx, row in enumerate(rows[:max_scan]):
@@ -197,7 +200,7 @@ class BaseParser(ABC):
         data_cnt = 0
         for row in rows[title_idx + 1:title_idx+21]:
             cells = [str(c or '').strip() for c in row]
-            if not cells or not BaseParser.POSITIONAL_SEQ_RE.match(cells[0]):
+            if not cells or not BaseParser.POSITIONAL_SEQ_RE.match(str(cells[0])):
                 continue
             cols = [i for i in range(1, len(cells))
                     if cells[i] and not BaseParser._is_number(cells[i])
@@ -539,7 +542,7 @@ class BaseParser(ABC):
         # 形态2:性质分组行(序号列空 + 名称列 "性质词+项目")
         # 形态2:性质分组行(序号列 + 名称列 "性质词+项目")
         if header_map is not None and cells and (not str(cells[0] or '').strip()
-                or re.fullmatch(r'^[（(]{0,1}[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]{0,1}[、.．\s]{0,1}', cells[0])):
+                or re.fullmatch(r'^[（(]{0,1}[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]{0,1}[、.．\s]{0,1}', str(cells[0]))):
             name_col = next((c for c, f in header_map.items() if f == 'project_name'), None)
             if name_col is None or name_col >= len(cells):
                 return ''
@@ -1312,8 +1315,7 @@ class BaseParser(ABC):
             collapsed = re.sub(r'\s+', ' ', text)
             if (PROSE_LABEL_RE.match(collapsed)
                     or BaseParser.is_note_text(collapsed)
-                    or (BaseParser._is_overview_sentence(collapsed)
-                        and not re.match(r'^\s*\d+[、.．]', collapsed))):
+                    or BaseParser._is_overview_sentence(collapsed)):
                 pending = False
                 continue
             # 性质分组头独立行(如 "续建项目："/"预备项目:" 后接该类项目条目,
@@ -1342,21 +1344,24 @@ class BaseParser(ABC):
             if re.match(r'^\d{1,3}$', text):
                 pending = True
                 continue
-            m = re.match(r'^(\d+)\s*[、.．]?\s*(.*)$', text)
+            m = re.match(r'^^[（(]?\s*(\d+)\s*[)）]?\s*[、.．]?\s*(.*)$', text)
             if m:
                 name = m.group(2).strip()
                 if not name:
                     pending = True  # 序号独占一行,下一行是项目名
-                # elif re.match(r'^20\d{2}\s*年', name):
-                #     pending = False  # 序号+年份行(如 "2.2020 年第四批…"),忽略
-                elif re.match(
-                        r'^(?![\s\S]*(?:统计|汇总))'  # 整串不能包含“统计”或“汇总”
-                            r'^20\d{2}\s*年(?:度)?'
-                            r'(?=[\s\S]*(?:第(?:[一二三四五六七八九十百千万两]+|\d+)批|统计|汇总|省重点项目名单))'
+                elif re.search(rf'20\d{2}\s*年(?:度)?[\s\S]{0,30}?(?:{TITLE_PATTERN})', name):
+                    pending = False  # 序号+年份行(如 "2.2020 年第四批…"),忽略
+                    continue
+                elif re.search(
+                    r'(?:'
+                            r'统计|汇总|领域项目包括'                    # 含统计/汇总
+                            r'|^(?:全长|其中|线路全长)'      # 或以这些词开头
+                            r')'
                 , name):
                     pending = False  # 内容片段行(表格错乱文本流),忽略
-                elif re.match(r'^(全长|其中|线路全长)', name):
-                    pending = False  # 内容片段行(表格错乱文本流),忽略
+                elif re.search(r'\.pdf$|\.docx$|\.xlsx$|.xls$', name.lower()):
+                    pending = False  # 附件
+                    continue
                 else:
                     # 多列合并整行("序号 项目名 单位 地点 内容")时,项目名取第一个空格前
                     if name.count(' ') >= 2:

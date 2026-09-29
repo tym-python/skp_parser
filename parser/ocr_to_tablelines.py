@@ -696,8 +696,8 @@ def _remove_empty_columns(
             kept.append(c)
 
     removed = len(col_defs) - len(kept)
-    if removed > 0:
-        print(f'移除 {removed} 个空列')
+    # if removed > 0:
+    #     print(f'移除 {removed} 个空列')
 
     return kept
 # ============================================================

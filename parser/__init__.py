@@ -18,6 +18,7 @@ from parser.xlsx_parser import XlsxParser
 PARSER_REGISTRY: Dict[str, Type[BaseParser]] = {
     '.pdf': PdfParser,
     '.docx': DocxParser,
+    '.doc': DocxParser,
     '.xlsx': XlsxParser,
     '.xls': XlsParser,
     '.png': ImageOcrParser,

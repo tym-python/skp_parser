@@ -34,7 +34,7 @@ logger = get_logger(__file__)
 class DocxParser(BaseParser):
     """DOCX 重点清单解析:表格优先;纯文本清单走段落兜底。"""
 
-    SUPPORTED_EXT = ('.docx',)
+    SUPPORTED_EXT = ('.docx','.doc')
 
     # ---------- 清洗 ----------
 
