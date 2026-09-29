@@ -21,7 +21,7 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'location': ('建设地点', '项目地点', '建设地址', '所在市县', '所在地', '所在盟市','项目位置','隶属区县','所在省辖市、县区'),
     'total_investment': ('总投资', '项目总投资', '总投资额', '投资额'),
     'annual_investment': ('年度计划投资', '年度投资', '本年度计划投资', '年计划投资', '计划投资', '预计投资', '投资计划', '计划完成投资'),
-    'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','工程形象进度','计划形象进度'),
+    'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','工程形象进度','计划形象进度','年建设目标'),
     'year_range': ('建设起止年限', '建设起止时间', '建设年限', '建设周期', '起止年限', '计划工期','计划建设期限'),
     'start_year': ('开工年份', '开工时间', '开工年度', '计划开工', '开工'),
     'end_year': ('竣工年份', '竣工时间', '完工年份', '计划竣工', '竣工'),
@@ -266,6 +266,13 @@ def map_row(header_map: Dict[int, str], row: List[Any],
                 continue
             unit_scale = header_unit(headers[idx]) if headers and idx < len(headers) else ''
             project[field] = clean_amount(cell, unit_scale=unit_scale, textType='cell')
+        elif field == 'annual_goal':
+            m_year = re.search(r'(20\d{2})', header_text)
+            if m_year and file_year and int(m_year.group(1)) != file_year:
+                if header_text:
+                    project.setdefault('extra_fields', {})[header_text] = str(cell or '').strip()
+                continue
+            project[field] = str(cell or '').replace('\n', '').strip()
         elif field == 'year_range':
             start, end = extract_years(cell)
             project['start_year'] = project.get('start_year') or start

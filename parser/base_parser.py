@@ -144,7 +144,7 @@ class BaseParser(ABC):
     # ---------- 公共逻辑 ----------
 
     @staticmethod
-    def find_header(rows: List[List[Any]], max_scan: int = 6, file_year:int =0
+    def find_header(rows: List[List[Any]], max_scan: int = 6
                     ) -> Tuple[Optional[Dict[int, str]], int]:
         """在表格行中定位表头行,返回 (列映射, 表头行索引)。
 
@@ -155,7 +155,7 @@ class BaseParser(ABC):
            两列表;单格 >30 字的备注行排除)。
         """
         for idx, row in enumerate(rows[:max_scan]):
-            header_map = build_header_map(row,file_year)
+            header_map = build_header_map(row)
             if len(header_map) >= 2:
                 return header_map, idx
         for idx, row in enumerate(rows[:max_scan]):
