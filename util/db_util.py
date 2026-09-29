@@ -270,8 +270,11 @@ class AsyncDB:
 
     async def init_db(self) -> None:
         """创建 skp_file、skp_project、skp_project_unit 等表(IF NOT EXISTS,可重复执行),
-        迁移补充新增列,并废弃删除历史遗留的 skp_file_extra 表(其 extra_info 已并入 skp_project)。"""
-
+        迁移补充新增列,并废弃删除历史遗留的 skp_file_extra 表(其 extra_info 已并入 skp_project)。
+        仅当 dbkey == 'local' 时才建表/迁移;其他 dbkey 视为只读或外部已建库,直接跳过。"""
+        if self.dbkey != 'local':
+            logger.info(f"dbkey={self.dbkey!r} 非 local,跳过数据库初始化")
+            return
         async def _run(conn: Any) -> None:
             async with conn.cursor() as cur:
                 await cur.execute(CREATE_TABLE_SKP_FILE)
