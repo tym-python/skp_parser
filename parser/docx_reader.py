@@ -9,9 +9,11 @@ with_grid=True 时 tbl 块附带各逻辑格的 (offset, span) 网格信息(第 
 供 两行表头按网格偏移 补父标题(docx_parser);默认关闭,通知解析等零变化。
 """
 
-import re
 from typing import Any, Iterator, List, Tuple
-
+import os
+import shutil
+import subprocess
+import tempfile
 from util.log_util import get_logger
 
 logger = get_logger(__file__)
@@ -45,6 +47,62 @@ def transpose(rows, grid=None):
 
     # 2) 转置
     return [[full[i][c] for i in range(n_rows)] for c in range(n_cols)]
+
+_OLE2_MAGIC = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+def _is_ole2(file_path: str) -> bool:
+    """读文件头 8 字节判断是否为 OLE2(旧版 .doc/.xls/.ppt)。"""
+    try:
+        with open(file_path, "rb") as f:
+            return f.read(8) == _OLE2_MAGIC
+    except OSError:
+        return False
+
+# doc转docx
+def _convert_doc_to_docx_libreoffice(doc_path: str, out_dir: str) -> str:
+    """用 LibreOffice 把 OLE2 .doc 转成 .docx,返回生成的 docx 路径。"""
+    # 复制成 .doc 后缀,避免 LibreOffice 因后缀与实际内容不符而拒绝转换
+    src_copy = os.path.join(out_dir, "source.doc")
+    shutil.copy(doc_path, src_copy)
+
+    last_err = None
+    for cmd in ("libreoffice", "soffice"):
+        try:
+            subprocess.run(
+                [cmd, "--headless", "--convert-to", "docx",
+                 "--outdir", out_dir, src_copy],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            break
+        except FileNotFoundError as e:
+            last_err = e
+            continue
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(
+                f"LibreOffice 转换失败: {e.stderr.decode(errors='ignore')}"
+            ) from e
+    else:
+        raise RuntimeError("未找到 libreoffice / soffice 命令,无法转换 .doc") from last_err
+
+    out_path = os.path.join(out_dir, "source.docx")
+    if not os.path.exists(out_path):
+        raise RuntimeError(f"转换后未生成 docx: {out_dir}")
+    return out_path
+
+def _convert_doc_to_docx(doc_path: str) -> str:
+    """把 OLE2 .doc 转成 .docx。返回临时 docx 路径,调用方负责删父目录。
+    优先 LibreOffice,失败再尝试 Word COM(Windows)。
+    """
+    out_dir = tempfile.mkdtemp(prefix="doc_conv_")
+    try:
+        return _convert_doc_to_docx_libreoffice(doc_path, out_dir)
+    except Exception as lo_err:
+        shutil.rmtree(out_dir, ignore_errors=True)
+        raise RuntimeError(
+            f"LibreOffice 失败({lo_err})"
+        ) from lo_err
 
 def _lxml_text(el: Any) -> str:
     """取元素下全部 w:t 文本(含 行内 tab 转空格,忽略分隔符 run)。"""
@@ -82,50 +140,60 @@ def iter_blocks(file_path: str, with_grid: bool = False) -> Iterator[Tuple[str, 
     行各逻辑格的 (offset, span) 网格坐标(合并格 span>1,见 w:gridSpan)。
     """
     import docx
+    tmp_dir = None          # 转换产生的临时目录,finally 清理
+    real_path = file_path   # 实际拿去读的路径
+    if _is_ole2(file_path):
+        logger.warning(f"{file_path}: 检测为 OLE2 旧版 .doc,先转换为 docx")
+        real_path = _convert_doc_to_docx(file_path)
+        tmp_dir = os.path.dirname(real_path)
     try:
-        document = docx.Document(file_path)
-    except Exception as ex:
-        logger.warning(f"{file_path}: python-docx 读取失败({ex}),降级 lxml 直接读 document.xml")
         try:
-            import zipfile
-            from lxml import etree
-            with zipfile.ZipFile(file_path) as zf:
-                xml = zf.read('word/document.xml')
-            yield from _lxml_blocks(etree.fromstring(xml))
-            return
-        except Exception as lex:
-            raise RuntimeError(f"docx 损坏且 lxml 兜底失败: {lex}") from ex
+            document = docx.Document(real_path)
+        except Exception as ex:
+            logger.warning(f"{file_path}: python-docx 读取失败({ex}),降级 lxml 直接读 document.xml")
+            try:
+                import zipfile
+                from lxml import etree
+                with zipfile.ZipFile(file_path) as zf:
+                    xml = zf.read('word/document.xml')
+                yield from _lxml_blocks(etree.fromstring(xml))
+                return
+            except Exception as lex:
+                raise RuntimeError(f"docx 损坏且 lxml 兜底失败: {lex}") from ex
 
-    # python-docx 正常路径:还原 body 子元素顺序
-    from docx.table import Table, _Cell
-    from docx.text.paragraph import Paragraph
-    for child in document.element.body.iterchildren():
-        if child.tag.endswith('}p'):
-            yield 'p', Paragraph(child, document).text
-        elif child.tag.endswith('}tbl'):
-            table = Table(child, document)
-            # 按逻辑格(tc)读取而非网格展开(row.cells):后者按最大列 span 展开、
-            # 合并值跨列重复,表头行与数据行 span 不同时(如 南京 2022 表头 10 逻辑列、
-            # 数据行"序号"占 2 网格列)逻辑列错位、字段映射取空。逻辑格与 lxml 兜底
-            # 路径口径一致,合并值只出现一次,表头/数据天然对齐
-            rows = [[_Cell(tc, table).text for tc in row._tr.tc_lst]
-                    for row in table.rows]
-            if not with_grid:
-                yield 'tbl', rows
-                continue
-            # 各逻辑格 (offset, span) 网格坐标:横向合并格 gridSpan>1,
-            # offset 为该格在表网格中的起始列(供两行表头按网格补父标题)
-            grid = []
-            for row in table.rows:
-                off = 0
-                spans = []
-                for tc in row._tr.tc_lst:
-                    sp = tc.tcPr.grid_span if tc.tcPr is not None else 1
-                    spans.append((off, sp))
-                    off += sp
-                grid.append(spans)
-            yield 'tbl', (rows, grid)
-
+        # python-docx 正常路径:还原 body 子元素顺序
+        from docx.table import Table, _Cell
+        from docx.text.paragraph import Paragraph
+        for child in document.element.body.iterchildren():
+            if child.tag.endswith('}p'):
+                yield 'p', Paragraph(child, document).text
+            elif child.tag.endswith('}tbl'):
+                table = Table(child, document)
+                # 按逻辑格(tc)读取而非网格展开(row.cells):后者按最大列 span 展开、
+                # 合并值跨列重复,表头行与数据行 span 不同时(如 南京 2022 表头 10 逻辑列、
+                # 数据行"序号"占 2 网格列)逻辑列错位、字段映射取空。逻辑格与 lxml 兜底
+                # 路径口径一致,合并值只出现一次,表头/数据天然对齐
+                rows = [[_Cell(tc, table).text for tc in row._tr.tc_lst]
+                        for row in table.rows]
+                if not with_grid:
+                    yield 'tbl', rows
+                    continue
+                # 各逻辑格 (offset, span) 网格坐标:横向合并格 gridSpan>1,
+                # offset 为该格在表网格中的起始列(供两行表头按网格补父标题)
+                grid = []
+                for row in table.rows:
+                    off = 0
+                    spans = []
+                    for tc in row._tr.tc_lst:
+                        sp = tc.tcPr.grid_span if tc.tcPr is not None else 1
+                        spans.append((off, sp))
+                        off += sp
+                    grid.append(spans)
+                yield 'tbl', (rows, grid)
+    finally:
+        # 3) 清理临时转换目录
+        if tmp_dir and os.path.isdir(tmp_dir):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
 
 def is_docx(file_path: str) -> bool:
     """docx 判定(ZIP 含 word/):供通知解析等按真实格式分派。"""
