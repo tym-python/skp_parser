@@ -31,6 +31,7 @@ CATEGORY_WEAK_WORDS = (
     '供热', '休闲', '康养', '应急', '安全', '资源', '粮食', '冷链', '革命',
     '新材料', '房地产', '领域', '类','国铁干线', '航道整治','天然气发电',
     '城市建设','城市道路','国省','航空', '体系', '油气开发','风力发电','其他工业产业',
+    '实施项目','产业项目',
 )
 CATEGORY_Supplement_WORDS = (
     # 部分被识别成项目的分类，全等
@@ -45,7 +46,7 @@ PROJECT_TYPE_WORDS = (
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
-CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号')
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
 from parser.ocr_to_tablelines import TITLE_KEYWORDS
