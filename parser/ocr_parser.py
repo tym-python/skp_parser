@@ -84,4 +84,4 @@ class ImageOcrParser(BaseParser):
         if _ == 'lines':
             return self.filter_blank_projects(self.parse_lines(lines, context))
         elif _ == 'table':
-            return self.extract_rows_from_table(lines, context)[0]
+            return self.filter_blank_projects(self.extract_rows_from_table(lines, context)[0])

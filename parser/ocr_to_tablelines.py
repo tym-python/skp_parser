@@ -52,6 +52,8 @@ def _garbage_score(items: List[Dict]) -> float:
       2. 短文本（len <= 2）占比 > 60%
       3. 平均文本长度 < 3
       4. 非中非字母数字的符号占比 > 40%
+      5. 含特殊字符
+      6. 字母item占比 > 40%
     """
     if not items:
         return 1.0
@@ -64,24 +66,29 @@ def _garbage_score(items: List[Dict]) -> float:
     total = len(all_text)
     cn = len(_CN_RE.findall(all_text))
     alnum = len(_ALNUM_RE.findall(all_text))
-    # specnum = len(_SPEC_RE.findall(all_text))
+    alitemnum = len([i['text'] for i in items if re.compile(r'[A-Za-z]').findall(i['text'])])
+    specnum = len([i['text'] for i in items if _SPEC_RE.findall(i['text'])])
     punct = total - cn - alnum
 
     short_ratio = sum(1 for it in items if len(it['text']) <= 2) / n
 
     score = 0.0
     if cn / total < 0.5:
-        score += 0.25
+        score += 0.15
     if short_ratio > 0.6:
-        score += 0.25
+        score += 0.15
     if alnum/total > 0.3:
-        score += 0.25
+        score += 0.15
     if punct / total > 0.3:
+        score += 0.15
+    if alitemnum/n > 0.4:
         score += 0.25
+    if specnum/n > 0.05:
+        score += 0.15
     return score
 
 
-def _is_garbage_ocr(items: List[Dict], threshold: float = 0.5) -> bool:
+def _is_garbage_ocr(items: List[Dict], threshold: float = 0.45) -> bool:
     """判定 OCR 结果是否基本是乱码，返回 True 表示应该跳过解析。"""
     if not items:
         return True
@@ -1204,7 +1211,7 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\11.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\21.jpg'
         full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_141959_345.png"
-        full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_164325_553.png"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\徐汇区2024年\重点项目清单.png"
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
