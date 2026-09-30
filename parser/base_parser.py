@@ -826,13 +826,13 @@ class BaseParser(ABC):
         “四好农村路”建设(打捆项目)"、"2024年城镇老旧小区改造项目")。
         """
         n = str(name).replace(' ', '')
-        if len(n) > 45:
+        if len(re.sub('重点项目清单','',n)) > 45:
             return False
         if not re.search(r'20\d{2}\s*(?:年|年度)', n):
             return False
         # 结尾:清单/名单/目录/总表 + 可选括号类别后缀("（预备项目）"/"（B类）")
         return bool(re.search(
-            r'(?:清单|名单|目录|总表)\s*(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
+            r'(?:清单|名单|目录|总表|汇总|报表|计划表)\s*(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
 
     @staticmethod
     def filter_blank_projects(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -850,6 +850,8 @@ class BaseParser(ABC):
                 pass
             if name.replace(' ', '').startswith(('合计', '总计', '小计')):
                 continue
+            if re.fullmatch(r'项目数\s*[\d,，.．]*\s*(?:个|项|件)?', name):
+                continue
             # 单位说明行(如 "金额单位:万元" / "单位：万元")不作为项目
             if re.search(r'(?:金额)?单位\s*[:：]\s*[万亿]元', name):
                 continue
@@ -858,6 +860,11 @@ class BaseParser(ABC):
             if BaseParser._is_year_list_title(name):
                 continue  # 年份+清单/名单类文档标题行(如 "2026年省重点前期工作项目清单")
             if BaseParser._filter_seconde_name(name):
+                continue
+            if re.fullmatch(r'[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?'
+    r'(?:[\s\d]*[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?)*',name):
+                continue
+            if re.search(r'网盘更新',name):
                 continue
             # 全数字/占位符清洗:项目名全数字或全破折号("——")→ 整条过滤;字段同型 → 置空
             if name and (re.fullmatch(r'[\d,，.．\s]+', name)
@@ -1569,7 +1576,6 @@ class BaseParser(ABC):
                     if (BaseParser.group_type_title(cells, header_map)
                             or self.apply_category(joined, context)):
                         continue
-                continue # TODO,为什么要有这一步
             # 建设性质标题行(单格纯词,如 安徽表 "续建"/"计划开工")→ project_type 上下文
             build_type = BaseParser.group_type_title(cells, header_map)
             if build_type:
