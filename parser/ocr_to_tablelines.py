@@ -279,6 +279,63 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
     return lines
 
 # ------------------------------------------------------------
+# 4.2 公共工具：校验横线分布是否合理
+# ------------------------------------------------------------
+def _is_horizontal_lines_valid(
+    horizontal_lines: List[float],
+    content_y0: float,
+    content_y1: float,
+    content_height: float,
+    avg_h: float,
+) -> bool:
+    """校验横线分布是否合理。
+
+    判据：
+      1. 纵向跨度：最上最下线之间的距离 >= content_height 的 50%
+         （或 >= avg_h * 5，取二者较小值，兼容短表格）
+      2. 分布均匀：相邻线间距的最大值不超过最小值的 20 倍
+      3. 首尾覆盖：第一条线距 content_y0、最后一条线距 content_y1
+         都 <= content_height 的 30%
+
+    参数：
+        horizontal_lines: 横线 y 坐标（升序）
+        content_y0/y1:    内容区上下边界（原图坐标）
+        content_height:   内容区高度
+        avg_h:            平均字高
+
+    返回：True 表示有效，False 表示应丢弃。
+    """
+    if len(horizontal_lines) < 3:
+        return False
+
+    lines = sorted(horizontal_lines)
+    top = lines[0]
+    bottom = lines[-1]
+
+    # ---------- 判据 1：纵向跨度 ----------
+    span = bottom - top
+    min_span = min(content_height * 0.5, avg_h * 5.0)
+    if span < min_span:
+        return False
+
+    # ---------- 判据 2：间距规律 ----------
+    gaps = [lines[i] - lines[i - 1] for i in range(1, len(lines))]
+    min_gap = min(gaps)
+    max_gap = max(gaps)
+    if min_gap <= 0:
+        return False
+    if max_gap / min_gap > 20:
+        return False
+
+    # ---------- 判据 3：首尾覆盖 ----------
+    if top - content_y0 > content_height * 0.3:
+        return False
+    if content_y1 - bottom > content_height * 0.3:
+        return False
+
+    return True
+
+# ------------------------------------------------------------
 # 4.1.5 大图降采样（只缩不放）
 # ------------------------------------------------------------
 # 线检测的目标宽度：超过此宽度才降采样，小于等于则原样
@@ -323,10 +380,13 @@ def _detect_horizontal_lines(
     min_total_ratio: float = 0.3,      # ★ 从 0.5 降到 0.3（现在是下限约束）
     min_px: int = 30,
     threshold_val: int = 180,
-    content_width: float = None,
+    content_width: float = None,  # 表格内容宽度（原图坐标）
+    content_y0: float = None,  # 内容区上边界（原图坐标）
+    content_y1: float = None,  # 内容区下边界（原图坐标）
+    avg_h: float = 20.0,  # 平均字高
     median_multiplier: float = 3.0,    # ★ 新增：中位数倍数
 ) -> List[float]:
-    """横线检测：投影法 + 自适应阈值（大图自动降采样）。
+    """横线检测：投影法 + 自适应阈值 + 分布有效性校验（大图自动降采样）。
 
     阈值 = max(min_px, 中位数 × median_multiplier, content_width × min_total_ratio)
 
@@ -334,11 +394,20 @@ def _detect_horizontal_lines(
     - median_multiplier：横线比文字行强多少倍才判为线
     - content_width × min_total_ratio：绝对下限，防止中位数失效
 
+    流程：
+      1. 大图降采样（只缩不放）
+      2. 二值化 → 投影 → 混合阈值 → 找横线
+      3. 坐标映射回原图
+      4. 分布有效性校验（跨度、间距、首尾覆盖）
+
     参数：
         min_total_ratio:    content_width 的下限系数
         min_px:             绝对下限（防止小图 ratio 失效）
         threshold_val:      二值化阈值
-        content_width:      表格内容宽度（原图坐标）
+        content_width:       表格内容宽度（原图坐标）
+        content_y0:          内容区上边界（原图坐标）
+        content_y1:          内容区下边界（原图坐标）
+        avg_h:               平均字高
         median_multiplier:  中位数倍数（越大越严格）
     """
     if img is None or img.size == 0:
@@ -352,14 +421,15 @@ def _detect_horizontal_lines(
         content_width_detect = content_width * scale
     else:
         content_width_detect = img_detect.shape[1]
-
+    # ---------- 2) 二值化 + 投影 ----------
     gray = cv2.cvtColor(img_detect, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
 
     # 每行暗像素数
     row_dark = binary.sum(axis=1) // 255
 
-    # ★ 中位数：只在"非空行"上统计，避免大片空白把中位数拉到 0
+    # ---------- 3) 混合阈值 ----------
+    # 中位数：只在"非空行"上统计，避免大片空白把中位数拉到 0
     non_empty = row_dark[row_dark > 0]
     if len(non_empty) > 0:
         median_dark = float(np.median(non_empty))
@@ -374,12 +444,20 @@ def _detect_horizontal_lines(
     )
 
     rows = np.where(row_dark > threshold)[0]
-
+    # ---------- 4) 合并 + 坐标映射回原图 ----------
     lines = _merge_adjacent_lines(rows)
-
-    # ★ 坐标映射回原图
     if scale != 1.0:
         lines = [y / scale for y in lines]
+
+    # ---------- 5) 分布有效性校验 ----------
+    if content_y0 is not None and content_y1 is not None:
+        content_height = content_y1 - content_y0
+        if content_height > 0:
+            if not _is_horizontal_lines_valid(
+                lines, content_y0, content_y1, content_height, avg_h,
+            ):
+                print('横线分布不合理')
+                return []
     return lines
 
 # ------------------------------------------------------------
@@ -855,9 +933,18 @@ def reconstruct_table_by_header(
     # 步骤 1：检测横竖线
     # ------------------------------------------------------------
     content_width = max(it['x1'] for it in items) - min(it['x0'] for it in items)
-    content_height = max(it['y1'] for it in items) - min(it['y0'] for it in items)
+    content_y0 = min(it['y0'] for it in items)
+    content_y1 = max(it['y1'] for it in items)
+    content_height = content_y1 - content_y0
     vertical_lines = _detect_vertical_lines(img,content_height=content_height) if img is not None else []
-    horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
+    # horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
+    horizontal_lines = _detect_horizontal_lines(
+        img,
+        content_width=content_width,
+        content_y0=content_y0,
+        content_y1=content_y1,
+        avg_h=avg_h,
+    ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
     # showLines(img,vertical_lines,'v')
     # showLines(img,horizontal_lines,'h')
@@ -1209,9 +1296,9 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\11.jpg'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\21.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州10.jpg'
         full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_141959_345.png"
-        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\图片\2026年省级重点项目清单（截止2026.2.10）.png"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\1_副本1.jpg"
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'

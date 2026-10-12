@@ -46,7 +46,7 @@ PROJECT_TYPE_WORDS = (
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
-CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）')
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
 from parser.ocr_to_tablelines import TITLE_KEYWORDS
@@ -847,6 +847,8 @@ class BaseParser(ABC):
         result = []
         for p in projects:
             name = p.get('project_name', '')
+            if re.fullmatch('[0-9a-zA-Z]+',name):
+                continue
             if name.endswith('中心'):
                 pass
             if name.replace(' ', '').startswith(('合计', '总计', '小计')):
