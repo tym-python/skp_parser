@@ -22,6 +22,7 @@ from typing import List, Dict, Any, Tuple, Optional
 from parser.field_mapping import HEADER_ALIASES
 import cv2
 import numpy as np
+from scipy.stats import trim_mean
 
 _rapid_engine = None
 
@@ -711,6 +712,7 @@ def _build_columns_from_vertical_lines(
     col_defs = [
         {
             'x0': lines[i], 'x1': lines[i + 1],
+            'x1': lines[i + 1],
             'xc': (lines[i] + lines[i + 1]) / 2.0,
             'header': '',
         }
@@ -1055,6 +1057,203 @@ def reconstruct_table_by_header(
 # ============================================================
 # 12. 降级：段落模式
 # ============================================================
+def _fallback_split_by_hlines(
+    items: List[Dict],
+    horizontal_lines: List[float],
+) -> List[List[Dict]]:
+    """按横线硬边界把 items 切成行。补上下边界确保覆盖所有 items。"""
+    boundaries = sorted(horizontal_lines)
+    y_min = min(it['y0'] for it in items)
+    y_max = max(it['y1'] for it in items)
+    if boundaries[0] > y_min:
+        boundaries = [y_min - 1.0] + boundaries
+    if boundaries[-1] < y_max:
+        boundaries = boundaries + [y_max + 1.0]
+    return _split_by_hard_boundaries(items, boundaries)
+
+def _fallback_group_by_y(
+    items: List[Dict],
+    avg_h: float,
+) -> List[List[Dict]]:
+    """y 中心聚类切行（原 _fallback_paragraph 的逻辑）。"""
+    if not items:
+        return []
+
+    items_sorted = sorted(items, key=lambda x: (x['y0'], x['x0']))
+    rows: List[List[Dict]] = []
+    for it in items_sorted:
+        placed = False
+        for row in rows:
+            row_yc = sum(x['yc'] for x in row) / len(row)
+            if abs(it['yc'] - row_yc) < avg_h * 1.2:
+                row.append(it)
+                placed = True
+                break
+        if not placed:
+            rows.append([it])
+
+    rows.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
+    return rows
+
+def _fallback_split_by_anchor(
+    items: List[Dict],
+    col_defs: List[Dict],
+    anchor_idx: int,
+    avg_h: float,
+) -> List[List[Dict]]:
+    """以锚点列为骨架切行，其他列的 items 按 y 重叠挂靠。"""
+    n = len(col_defs)
+
+    # 1) items 按列分组
+    col_items_list: List[List[Dict]] = [[] for _ in range(n)]
+    for it in items:
+        col_items_list[_assign_column(it['xc'], col_defs)].append(it)
+
+    anchor_items = col_items_list[anchor_idx]
+    if not anchor_items:
+        return _fallback_group_by_y(items, avg_h)
+
+    # 2) 锚点列 y 聚类 → 得到"行骨架"
+    anchor_sorted = sorted(anchor_items, key=lambda x: x['yc'])
+    anchor_groups: List[List[Dict]] = []
+    curr = [anchor_sorted[0]]
+    curr_sum = anchor_sorted[0]['yc']
+    for it in anchor_sorted[1:]:
+        curr_yc = curr_sum / len(curr)
+        if abs(it['yc'] - curr_yc) < avg_h * 1.2:
+            curr.append(it)
+            curr_sum += it['yc']
+        else:
+            anchor_groups.append(curr)
+            curr = [it]
+            curr_sum = it['yc']
+    anchor_groups.append(curr)
+
+    # 3) 每个骨架定义 y 范围
+    anchor_rows = [
+        {
+            'y0': min(it['y0'] for it in g),
+            'y1': max(it['y1'] for it in g),
+            'items': list(g),
+        }
+        for g in anchor_groups
+    ]
+
+    # 4) 其他列的 items 按 y 重叠挂靠
+    for col_idx in range(n):
+        if col_idx == anchor_idx:
+            continue
+        for it in col_items_list[col_idx]:
+            best_i, best_ov = None, 0.0
+            for i, g in enumerate(anchor_rows):
+                ov = min(g['y1'], it['y1']) - max(g['y0'], it['y0'])
+                if ov > best_ov:
+                    best_ov, best_i = ov, i
+            if best_i is not None and best_ov > 0:
+                anchor_rows[best_i]['items'].append(it)
+            else:
+                c_yc = (it['y0'] + it['y1']) / 2.0
+                best_i = min(
+                    range(len(anchor_rows)),
+                    key=lambda i: abs(
+                        (anchor_rows[i]['y0'] + anchor_rows[i]['y1']) / 2.0 - c_yc
+                    ),
+                )
+                anchor_rows[best_i]['items'].append(it)
+
+    return [r['items'] for r in anchor_rows]
+
+def _fallback_render_plain(rows: List[List[Dict]]) -> List[str]:
+    """纯文本渲染：每行 items 按 x 排序拼接。"""
+    result: List[str] = []
+    for row in rows:
+        if not row:
+            continue
+        row_sorted = sorted(row, key=lambda x: x['x0'])
+        text = _cell_text(row_sorted, 'row')
+        if text.strip():
+            result.append(text)
+    return result
+
+
+def _fallback_render_with_columns(
+    rows: List[List[Dict]],
+    col_defs: List[Dict],
+) -> List[str]:
+    """带列渲染：每行按列分组，列间 ' | ' 连接。"""
+    n = len(col_defs)
+    result: List[str] = []
+    for row in rows:
+        if not row:
+            continue
+
+        cells: List[List[Dict]] = [[] for _ in range(n)]
+        for it in row:
+            cells[_assign_column(it['xc'], col_defs)].append(it)
+
+        cell_texts: List[str] = []
+        for cell in cells:
+            if not cell:
+                cell_texts.append('')
+                continue
+            cell_sorted = sorted(cell, key=lambda x: (x['y0'], x['x0']))
+            cell_texts.append(''.join(it['text'] for it in cell_sorted))
+
+        # 去尾部空列
+        while cell_texts and not cell_texts[-1]:
+            cell_texts.pop()
+
+        if any(c.strip() for c in cell_texts):
+            result.append(' '.join(cell_texts))
+
+    return result
+
+def _find_anchor_by_keywords(
+    items: List[Dict],
+    col_defs: List[Dict],
+    aliases: Optional[Tuple[str, ...]] = None,
+) -> int:
+    """按列内容匹配关键字找锚点列（不需要 header 字段）。
+
+    逻辑：统计每列的 items 文本里命中"项目名称"类关键字的数量，
+    命中最多且 > 0 的列即为锚点列。
+
+    参数：
+        items:   全部 items
+        col_defs: 列定义（只需 x0/x1/xc）
+        aliases: 关键字别名，默认取 HEADER_ALIASES['project_name']
+
+    返回：锚点列索引；找不到返回 -1。
+    """
+    if not col_defs or not items:
+        return -1
+
+    if aliases is None:
+        aliases = HEADER_ALIASES.get('project_name', ())
+
+    if not aliases:
+        return -1
+
+    n = len(col_defs)
+    hit_count = [0] * n
+
+    for it in items:
+        idx = _assign_column(it['xc'], col_defs)
+        if 0 <= idx < n:
+            text = it.get('text') or ''
+            if any(alias in text for alias in aliases):
+                hit_count[idx] += 1
+
+    # 命中最多且 > 0 的列
+    best_idx = -1
+    best_hit = 0
+    for i, cnt in enumerate(hit_count):
+        if cnt > best_hit:
+            best_hit = cnt
+            best_idx = i
+
+    return best_idx
+
 def _fallback_paragraph(
     items: List[Dict],
     horizontal_lines: Optional[List[float]] = None,
@@ -1077,85 +1276,49 @@ def _fallback_paragraph(
     if not items:
         return []
 
-    avg_h = sum(it['h'] for it in items) / len(items)
+    avg_h = trim_mean([it['h'] for it in items],0.1)
+    # avg_h = sum(it['h'] for it in items) / len(items)
 
     # ---------- 1) 确定行分组 ----------
     has_h = horizontal_lines is not None and len(horizontal_lines) >= 2
     has_v = vertical_lines is not None and len(vertical_lines) >= 2
 
-    if has_h:
-        # 横线硬边界切行
-        boundaries = sorted(horizontal_lines)
-        y_min = min(it['y0'] for it in items)
-        y_max = max(it['y1'] for it in items)
-        if boundaries[0] > y_min:
-            boundaries = [y_min - 1.0] + boundaries
-        if boundaries[-1] < y_max:
-            boundaries = boundaries + [y_max + 1.0]
-        row_groups = _split_by_hard_boundaries(items, boundaries)
-    else:
-        # 原逻辑：y 中心聚类
-        items_sorted = sorted(items, key=lambda x: (x['y0'], x['x0']))
-        row_groups: List[List[Dict]] = []
-        for it in items_sorted:
-            placed = False
-            for line in row_groups:
-                line_yc = sum(x['yc'] for x in line) / len(line)
-                if abs(it['yc'] - line_yc) < avg_h * 1.2:
-                    line.append(it)
-                    placed = True
-                    break
-            if not placed:
-                row_groups.append([it])
-        row_groups.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
+    # ---------- 模式 A：有横线无竖线 ----------
+    if has_h and not has_v:
+        rows = _fallback_split_by_hlines(items, horizontal_lines)
+        return _fallback_render_plain(rows)
 
-    # ---------- 2) 确定列定义（有竖线时） ----------
-    col_defs: Optional[List[Dict]] = None
-    if has_v:
+    # ---------- 模式 B：有竖线无横线 ----------
+    if has_v and not has_h:
+
         col_defs = _build_columns_from_vertical_lines(
             vertical_lines,
-            img_width=10**9,    # 大值，避免内部补左右边界
+            img_width=10**9,        # 大值，不触发补左右边界
             header_items=None,
             avg_h=avg_h,
         )
         if not col_defs or len(col_defs) < 2:
-            col_defs = None
+            # 竖线不够用 → 退回纯 y 聚类
+            return _fallback_render_plain(_fallback_group_by_y(items, avg_h))
 
-    # ---------- 3) 逐行渲染 ----------
-    result: List[str] = []
-    for row in row_groups:
-        if not row:
-            continue
-
-        if col_defs is None:
-            # 无列：按 x 排序拼接（原逻辑）
-            row_sorted = sorted(row, key=lambda x: x['x0'])
-            text = _cell_text(row_sorted, 'row')
-            if text.strip():
-                result.append(text)
+        # 划分行
+        if len(col_defs) > 3:
+            anchor_idx = _find_anchor_by_keywords(items, col_defs)  # 找项目名称列
+            if anchor_idx >= 0:
+                col_defs = col_defs[:anchor_idx + 1]
+                # 过滤掉锚点列右侧的 items（避免被 _assign_column 归到锚点列）
+                right_limit = col_defs[-1]['x1']
+                items_kept = [it for it in items if it['xc'] < right_limit]
+                rows = _fallback_split_by_anchor(items_kept, col_defs, anchor_idx, avg_h)
+            else:
+                rows = _fallback_group_by_y(items, avg_h)
         else:
-            # 有列：按列分组
-            n = len(col_defs)
-            cells: List[List[Dict]] = [[] for _ in range(n)]
-            for it in row:
-                cells[_assign_column(it['xc'], col_defs)].append(it)
+            rows = _fallback_group_by_y(items, avg_h)
 
-            cell_texts: List[str] = []
-            for cell in cells:
-                if not cell:
-                    cell_texts.append('')
-                    continue
-                cell_sorted = sorted(cell, key=lambda x: (x['y0'], x['x0']))
-                cell_texts.append(''.join(it['text'] for it in cell_sorted))
+        return _fallback_render_with_columns(rows, col_defs)
 
-            # 去尾部空列
-            while cell_texts and not cell_texts[-1]:
-                cell_texts.pop()
-
-            if any(c.strip() for c in cell_texts):
-                result.append(' '.join(cell_texts))
-
-    return result
+    # ---------- 模式 C：都无 ----------
+    return _fallback_render_plain(_fallback_group_by_y(items, avg_h))
 
 
 # ============================================================
@@ -1299,7 +1462,12 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州10.jpg'
         full_path = r"C:\Users\stu_x\Desktop\微信图片_2026-09-28_141959_345.png"
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\1_副本1.jpg"
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4_副本4.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\1.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\12.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\11.jpg"
+
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2v020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
