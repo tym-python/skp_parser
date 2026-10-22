@@ -287,13 +287,15 @@ class BaseParser(ABC):
         if len(non_empty) != 1:
             return False
         v_c = re.sub(r'\s+', '', non_empty[0])
+        if len(v_c)>PROSE_CELL_MAX_LEN:
+            return False
         if re.match(r'^.+[县州盟省]$', v_c) or v_c in ('市直', '区直'):
             return True
         if (allow_city and len(v_c) <= GROUP_CITY_MAX_LEN
                 and GROUP_CITY_SUFFIX_RE.search(v_c)):
             return True
         # 机构/区划后缀分组行;"…餐厅/展厅" 等场所名尾"厅"是真项目,不算机构
-        if GROUP_SINGLE_SUFFIX_RE.search(v_c):
+        if len(v_c) <= 14 and GROUP_SINGLE_SUFFIX_RE.search(v_c):
             return not bool(GROUP_VENUE_TAIL_RE.search(v_c))
         return False
 
@@ -847,7 +849,7 @@ class BaseParser(ABC):
         result = []
         for p in projects:
             name = p.get('project_name', '')
-            if re.fullmatch('[0-9a-zA-Z]+',name):
+            if not re.findall('[\u4e00-\u9fa5]+',name,re.DOTALL):
                 continue
             if name.endswith('中心'):
                 pass
@@ -867,7 +869,7 @@ class BaseParser(ABC):
             if re.fullmatch(r'[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?'
     r'(?:[\s\d]*[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?)*',name):
                 continue
-            if re.search(r'网盘更新',name):
+            if re.search(r'网盘更新|扫码咨询|免费订阅',name):
                 continue
             # 全数字/占位符清洗:项目名全数字或全破折号("——")→ 整条过滤;字段同型 → 置空
             if name and (re.fullmatch(r'[\d,，.．\s]+', name)
@@ -1411,6 +1413,11 @@ class BaseParser(ABC):
                     continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
             if projects:
+                if re.findall('项目|项日|项曰|页目|顶日|顶目',projects[-1]['project_name'],re.DOTALL):
+                    project = self._new_project(text, text, context)
+                    project['source_row'] = line_idx  # 文本行号(1-based)
+                    projects.append(project)
+                    continue
                 last = projects[-1]
                 investment = clean_amount(text, require_unit=True)
                 if investment:
