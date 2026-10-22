@@ -173,7 +173,7 @@ def _detect_title_rows(
         text = ''.join(x['text'] for x in row)
         text_clean = text.replace(' ', '').replace('\u3000', '')
 
-        if any(kw in text for kw in TITLE_KEYWORDS):
+        if any(kw in text for kw in TITLE_KEYWORDS) and '项目名称' not in text_clean:
             title_count += 1
             continue
         if UNIT_LINE_RE.search(text_clean):
@@ -385,6 +385,7 @@ def _detect_horizontal_lines(
     content_y0: float = None,  # 内容区上边界（原图坐标）
     content_y1: float = None,  # 内容区下边界（原图坐标）
     avg_h: float = 20.0,  # 平均字高
+    min_h: float = None,  # 最小有效横线间距（去重阈值）
     median_multiplier: float = 3.0,    # ★ 新增：中位数倍数
 ) -> List[float]:
     """横线检测：投影法 + 自适应阈值 + 分布有效性校验（大图自动降采样）。
@@ -409,6 +410,8 @@ def _detect_horizontal_lines(
         content_y0:          内容区上边界（原图坐标）
         content_y1:          内容区下边界（原图坐标）
         avg_h:               平均字高
+        min_h: 最小有效横线间距。若为 None，默认取 avg_h * 1.5。
+               用于过滤多行表头文字内部被误识别的伪线。
         median_multiplier:  中位数倍数（越大越严格）
     """
     if img is None or img.size == 0:
@@ -449,6 +452,19 @@ def _detect_horizontal_lines(
     lines = _merge_adjacent_lines(rows)
     if scale != 1.0:
         lines = [y / scale for y in lines]
+
+    # ---------- ★ 5) 密集线去重 ----------
+    if min_h is None:
+        min_h = avg_h * 1.2   # 默认 1.5 倍行高
+
+    if lines and min_h > 0:
+        filtered_lines = [lines[0]]
+        for y in lines[1:]:
+            if y - filtered_lines[-1] < min_h:
+                # 距离上一条被保留的线太近 → 视为同一个结构（如多行表头内部），省略
+                continue
+            filtered_lines.append(y)
+        lines = filtered_lines
 
     # ---------- 5) 分布有效性校验 ----------
     if content_y0 is not None and content_y1 is not None:
@@ -597,11 +613,10 @@ def _detect_header_by_lines(
     colnum: int,
 ) -> Tuple[List[Dict], List[Dict]]:
     """用横线定位表头。
-
-    思路：
-      在 horizontal_lines[0..3] 中选一条线作为表头下边界，
-      使得该线"上方 items 数"和"下方 items 数"都 >= 2，
-      并且上方 items 的 y 范围最紧凑（即最像表头）。
+    候选线条件：
+      1. 上方/下方 items 数 >= 2
+      2. 命中 HEADER_ALIASES 字段数达标，或命中 project_name
+      3. 线不能穿透文字实体（防止多行表头内部的伪线干扰）
 
     返回 (header_items, body_items)；不可靠时返回 ([], items)。
     """
@@ -614,6 +629,18 @@ def _detect_header_by_lines(
     best_bottom = None
 
     for bottom in candidates[1:]:
+        # 若 bottom 落在某个 item 的 [y0 + margin, y1 - margin] 内，说明它穿过了文字
+        is_fake_line = False
+        for it in items:
+            # 容差 margin 取 15% 字高，防止抗锯齿边缘擦边被误判
+            margin = it['h'] * 0.15
+            if (it['y0'] + margin) < bottom < (it['y1'] - margin):
+                is_fake_line = True
+                break
+        if is_fake_line:
+            # print(f'[跳过] y={bottom:.1f} 穿透文字实体')
+            continue
+        # 按横线切分上下区域
         above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
         below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
 
@@ -906,6 +933,17 @@ def group_cells_into_rows_with_anchor(
 # ============================================================
 # 11. 主函数：按表头定列重建表格
 # ============================================================
+import heapq, math
+
+def mean_of_lowest_pct(values, pct=0.2):
+    """values 可以是任意可迭代对象（含生成器）"""
+    vals = list(values)
+    if not vals:
+        return 0.0
+    k = max(1, math.ceil(len(vals) * pct))
+    lowest = heapq.nsmallest(k, vals)
+    return sum(lowest) / k
+
 def reconstruct_table_by_header(
     items: List[Dict],
     img: np.ndarray = None,
@@ -937,6 +975,7 @@ def reconstruct_table_by_header(
     content_width = max(it['x1'] for it in items) - min(it['x0'] for it in items)
     content_y0 = min(it['y0'] for it in items)
     content_y1 = max(it['y1'] for it in items)
+    min_h = mean_of_lowest_pct((it['h'] for it in items), 0.2)
     content_height = content_y1 - content_y0
     vertical_lines = _detect_vertical_lines(img,content_height=content_height) if img is not None else []
     # horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
@@ -946,6 +985,7 @@ def reconstruct_table_by_header(
         content_y0=content_y0,
         content_y1=content_y1,
         avg_h=avg_h,
+        min_h=min_h,
     ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
     # showLines(img,vertical_lines,'v')
@@ -1465,15 +1505,20 @@ if __name__ == "__main__":
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4_副本4.jpg"
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\1.jpg"
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\12.jpg"
-        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\11.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单4.jpg"
+        # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\水印图片\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png"
+        # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\荣昌区2025年\荣昌区2025年重点建设项目计划表13.jpg"
+        # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0024.jpg"
 
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2v020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\31.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png
-        # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\荆州市2024年\荆州市2024年省级重点项目清单.png'''
+        # '''
         # for file in t.split('\n'):
         #     if not file:
         #         continue
