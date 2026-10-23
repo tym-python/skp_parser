@@ -38,8 +38,8 @@ _SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
 
 # 标题关键字：命中即判为标题
 TITLE_KEYWORDS = (
-    '项目清单', '清单汇总', '项目分布', '项目计划表','项目计划','项目投资计划','投资项目计划',
-    '项目表', '项目一览', '项目汇总','项目名单','项目月报表','项目建设计划','投资计划表'
+    '项目清单', '清单汇总', '项目分布', '项目计划表', '项目计划', '项目投资计划', '投资项目计划',
+    '项目表', '项目一览', '项目汇总', '项目名单', '项目月报表', '项目建设计划', '投资计划表'
 )
 # 金额单位行正则，如"金额单位：万元"、"单位：亿元"
 UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
@@ -91,8 +91,8 @@ def parse_items(result) -> List[Dict[str, Any]]:
             'y0': min(ys), 'y1': max(ys),
             'xc': sum(xs) / 4.0,
             'yc': sum(ys) / 4.0,
-            'h':  max(ys) - min(ys),
-            'w':  max(xs) - min(xs),
+            'h': max(ys) - min(ys),
+            'w': max(xs) - min(xs),
         })
     return items
 
@@ -133,11 +133,11 @@ def _garbage_score(items: List[Dict]) -> float:
         score += 15
     if short_ratio > 0.6:
         score += 15
-    if alnum/total > 0.3:
+    if alnum / total > 0.3:
         score += 15
     if punct / total > 0.3:
         score += 15
-    if alitemnum/n > 0.4:
+    if alitemnum / n > 0.4:
         score += 25
     if specnum:
         score += 15
@@ -193,7 +193,7 @@ def _detect_title_rows(
         phys_rows: List[List[Dict]],
         avg_h: float,
         img_width: int,
-) :
+):
     """检测顶部标题占据的物理行数（不含表头）。
 
     标题特征（满足任一即判为标题）：
@@ -230,7 +230,7 @@ def _detect_title_rows(
 
         break
 
-    return title_count,HEADER_UNIT_itme
+    return title_count, HEADER_UNIT_itme
 
 
 def _remove_title_and_unit_rows(
@@ -246,7 +246,7 @@ def _remove_title_and_unit_rows(
         return items
 
     phys_rows = _split_physical_rows(items, avg_h)
-    title_n,HEADER_UNIT_itme = _detect_title_rows(phys_rows, avg_h, img_width)
+    title_n, HEADER_UNIT_itme = _detect_title_rows(phys_rows, avg_h, img_width)
     if title_n <= 0:
         return items
 
@@ -300,8 +300,8 @@ def _is_lines_distribution_valid(
         content_max: float,
         content_size: float,
         avg_h: float,
-        max_gap_ratio: float = 20.0,   # 竖线传 50，横线默认 20
-        min_lines: int = 3,            # 竖线传 2，横线默认 3
+        max_gap_ratio: float = 20.0,  # 竖线传 50，横线默认 20
+        min_lines: int = 3,  # 竖线传 2，横线默认 3
         min_span_ratio: float = 0.5,
         edge_tolerance_ratio: float = 0.3,
 ) -> bool:
@@ -391,15 +391,15 @@ def _maybe_downscale(
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
         img: np.ndarray,
-        min_total_ratio: float = 0.3,      # 从 0.5 降到 0.3（现在是下限约束）
+        min_total_ratio: float = 0.3,  # 从 0.5 降到 0.3（现在是下限约束）
         min_px: int = 30,
         threshold_val: int = 180,
-        content_width: float = None,       # 表格内容宽度（原图坐标）
-        content_y0: float = None,          # 内容区上边界（原图坐标）
-        content_y1: float = None,          # 内容区下边界（原图坐标）
-        avg_h: float = 20.0,               # 平均字高
-        min_h: float = None,               # 最小有效横线间距（去重阈值）
-        median_multiplier: float = 3.0,    # 中位数倍数
+        content_width: float = None,  # 表格内容宽度（原图坐标）
+        content_y0: float = None,  # 内容区上边界（原图坐标）
+        content_y1: float = None,  # 内容区下边界（原图坐标）
+        avg_h: float = 20.0,  # 平均字高
+        min_h: float = None,  # 最小有效横线间距（去重阈值）
+        median_multiplier: float = 3.0,  # 中位数倍数
 ) -> List[float]:
     """横线检测：投影法 + 自适应阈值 + 分布有效性校验（大图自动降采样）。
 
@@ -470,7 +470,7 @@ def _detect_horizontal_lines(
 
     # ---------- 5) 密集线去重 ----------
     if min_h is None:
-        min_h = avg_h * 1.2   # 默认 1.2 倍行高
+        min_h = avg_h * 1.2  # 默认 1.2 倍行高
 
     if lines and min_h > 0:
         filtered_lines = [lines[0]]
@@ -490,7 +490,7 @@ def _detect_horizontal_lines(
                     content_max=content_y1,
                     content_size=content_height,
                     avg_h=avg_h,
-                    max_gap_ratio=20.0,   # 横线行高变化
+                    max_gap_ratio=20.0,  # 横线行高变化
                     min_lines=3,
             ):
                 print('横线分布不合理')
@@ -522,7 +522,7 @@ def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
 
 def _detect_vertical_lines(
         img: np.ndarray,
-        min_total_ratio: float = 0.3,        # 总暗像素至少占图高 30%
+        min_total_ratio: float = 0.3,  # 总暗像素至少占图高 30%
         min_continuous_ratio: float = 0.15,  # 最长连续段至少占图高 15%
         threshold_val: int = 180,
         content_height: float = None
@@ -677,7 +677,7 @@ def _detect_header_by_lines(
             if any(alias in all_text for alias in aliases)
         )
 
-        if field_hits > min(colnum*0.5,5):
+        if field_hits > min(colnum * 0.5, 5):
             best_bottom = bottom
             break
         else:
@@ -1002,15 +1002,15 @@ def _cell_text(cell_items: List[Dict], type: str) -> str:
             max_xy1 = max(x['y1'] for x in currline)
         elif type == 'row':
             max_xy1 = max(x['x1'] for x in currline)
-        if type == 'col' and max_xy1 <= it['y0'] + it['h'] * 0.25:   # 换行
+        if type == 'col' and max_xy1 <= it['y0'] + it['h'] * 0.25:  # 换行
             currline.sort(key=lambda x: x['x0'])
             text_lines.append(''.join(x['text'] for x in currline))
             currline = [it]
-        elif type == 'row' and max_xy1 <= it['x0'] + it['w'] * 0.25: # 换列
+        elif type == 'row' and max_xy1 <= it['x0'] + it['w'] * 0.25:  # 换列
             currline.sort(key=lambda x: x['y0'])
             text_lines.append(''.join(x['text'] for x in currline))
             currline = [it]
-        else:                                      # 同行
+        else:  # 同行
             currline.append(it)
 
     text_lines.append(''.join(x['text'] for x in currline))
@@ -1088,6 +1088,7 @@ def mean_of_lowest_pct(values, pct=0.2):
     lowest = heapq.nsmallest(k, vals)
     return sum(lowest) / k
 
+
 def reconstruct_table_by_header(
         items: List[Dict],
         img: np.ndarray = None,
@@ -1123,7 +1124,7 @@ def reconstruct_table_by_header(
     content_y1 = max(it['y1'] for it in items)
     content_height = content_y1 - content_y0
     min_h = mean_of_lowest_pct((it['h'] for it in items), 0.2)
-    vertical_lines = _detect_vertical_lines(img,content_height=content_height) if img is not None else []
+    vertical_lines = _detect_vertical_lines(img, content_height=content_height) if img is not None else []
     # 竖线暂时没进行有效性检测，存在漏线情况，后续将项目名称强制提出。
     # horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
     horizontal_lines = _detect_horizontal_lines(
@@ -1157,8 +1158,8 @@ def reconstruct_table_by_header(
     # 步骤 3：横线定表头
     # ------------------------------------------------------------
     header_items, body_items = _detect_header_by_lines(
-        items, horizontal_lines, len(vertical_lines)-1,
-                                 )
+        items, horizontal_lines, len(vertical_lines) - 1,
+    )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
         return _fallback_paragraph(
@@ -1190,7 +1191,7 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     anchor_col_idx = _find_anchor_col_idx(col_defs, keyword="项目名称")
     if anchor_col_idx < 0:
-        anchor_col_idx = 1   # 兜底：默认第 1 列
+        anchor_col_idx = 1  # 兜底：默认第 1 列
 
     # ------------------------------------------------------------
     # 步骤 6：body items 按列落位
@@ -1205,7 +1206,7 @@ def reconstruct_table_by_header(
     body_y1 = max(it['y1'] for it in body_items)
     boundaries = list(horizontal_lines)
     if boundaries[-1] < body_y1:
-        boundaries.append(body_y1)   # 补下边界，确保覆盖所有数据行
+        boundaries.append(body_y1)  # 补下边界，确保覆盖所有数据行
 
     all_cells: List[Dict] = []
     for col_idx, col_items in enumerate(col_items_list):
@@ -1259,6 +1260,7 @@ def _fallback_split_by_hlines(
         boundaries = boundaries + [y_max + 1.0]
     return _split_by_hard_boundaries(items, boundaries)
 
+
 def _fallback_group_by_y(
         items: List[Dict],
         avg_h: float,
@@ -1282,6 +1284,7 @@ def _fallback_group_by_y(
 
     rows.sort(key=lambda l: sum(x['yc'] for x in l) / len(l))
     return rows
+
 
 def _fallback_split_by_anchor(
         items: List[Dict],
@@ -1351,6 +1354,7 @@ def _fallback_split_by_anchor(
 
     return [r['items'] for r in anchor_rows]
 
+
 def _fallback_render_plain(rows: List[List[Dict]]) -> List[str]:
     """纯文本渲染：每行 items 按 x 排序拼接。"""
     result: List[str] = []
@@ -1395,6 +1399,7 @@ def _fallback_render_with_columns(
             result.append(' '.join(cell_texts))
 
     return result
+
 
 def _find_anchor_by_keywords(
         items: List[Dict],
@@ -1442,6 +1447,7 @@ def _find_anchor_by_keywords(
 
     return best_idx
 
+
 def _fallback_paragraph(
         items: List[Dict],
         horizontal_lines: Optional[List[float]] = None,
@@ -1464,7 +1470,7 @@ def _fallback_paragraph(
     if not items:
         return []
 
-    avg_h = trim_mean([it['h'] for it in items],0.1)
+    avg_h = trim_mean([it['h'] for it in items], 0.1)
     # avg_h = sum(it['h'] for it in items) / len(items)
 
     # ---------- 1) 确定行分组 ----------
@@ -1481,7 +1487,7 @@ def _fallback_paragraph(
 
         col_defs = _build_columns_from_vertical_lines(
             vertical_lines,
-            img_width=10**9,        # 大值，不触发补左右边界
+            img_width=10 ** 9,  # 大值，不触发补左右边界
             header_items=None,
             avg_h=avg_h,
         )
@@ -1547,10 +1553,11 @@ def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
         print(f"OCR 失败: {type(ex).__name__}: {ex}")
         return [], None
 
+
 # ============================================================
 # 14. 批量遍历脚本
 # ============================================================
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 遍历指定目录及其所有子目录，每个文件夹取一张图片。
@@ -1585,7 +1592,7 @@ def iter_one_image_per_folder(root, exts=IMAGE_EXTS, sort=True):
 
         if images:
             if sort:
-                images.sort()          # 按文件名排序，取第一张
+                images.sort()  # 按文件名排序，取第一张
             yield Path(dirpath), Path(dirpath) / images[0]
 
 
@@ -1598,10 +1605,10 @@ def main(root_path):
         with open(image, 'rb') as f:
             data = f.read()
 
-        lines,_ = ocr_image_bytes(data)
+        lines, _ = ocr_image_bytes(data)
         for ln in lines:
             print(ln)
-        print('='*30,len(lines))
+        print('=' * 30, len(lines))
 
         # 这里可以对 image 做你想做的事，比如：
         # shutil.copy(image, "output/")        # 复制
@@ -1609,7 +1616,8 @@ def main(root_path):
 
     print(f"共在 {count} 个文件夹中各找到 1 张图片。")
 
-def showLines(img,lines,type:''):
+
+def showLines(img, lines, type: ''):
     color = (0, 0, 255)  # BGR，红色
     h, w = img.shape[:2]
     thickness = 2  # 线宽
@@ -1631,6 +1639,7 @@ def showLines(img,lines,type:''):
 
     cv2.imwrite("output_lines.jpg", img)
     print("已保存到 output_lines.jpg")
+
 
 if __name__ == "__main__":
     batch_flag = False
@@ -1676,7 +1685,7 @@ if __name__ == "__main__":
         with open(full_path, 'rb') as f:
             data = f.read()
 
-        lines,_ = ocr_image_bytes(data)
+        lines, _ = ocr_image_bytes(data)
         for ln in lines:
             print(ln)
-        print('='*30,len(lines))
+        print('=' * 30, len(lines))
