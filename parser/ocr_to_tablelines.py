@@ -5,7 +5,7 @@
   1. RapidOCR 识别图片 → items（text + 坐标）
   2. 清除顶部标题行 / 金额单位行
   3. 检测横线（定位表头）与竖线（定义列）
-  4. 无足够表格线 → 降级为段落模式
+  4. 无足够表格线 → 降级为段落模式（支持带线降级）
   5. 横线定表头 → 竖线定列 → body items 落列
   6. 横线硬边界切分单元格 → 锚点列（项目名称）分行
   7. 渲染为 (result, mode)
@@ -33,7 +33,7 @@ _rapid_engine = None
 _CN_RE = re.compile(r'[\u4e00-\u9fff]')
 # 数字 + 英文字母
 _ALNUM_RE = re.compile(r'[0-9A-Za-z]')
-# 特殊字符
+# 特殊字符（排除汉字、数字、标点、符号、空白）
 _SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
 
 # 标题关键字：命中即判为标题
@@ -101,23 +101,23 @@ def parse_items(result) -> List[Dict[str, Any]]:
 # 2. 乱码判断
 # ------------------------------------------------------------
 def _garbage_score(items: List[Dict]) -> float:
-    """计算 OCR 结果的"乱码分"，0~1，越高越乱。
+    """计算 OCR 结果的"乱码分"，0~100，越高越乱。
 
-    判据（每项命中加 0.25，满分 1.0）：
-      1. 中文字符占比 < 15%
+    判据（命中各项累加）：
+      1. 中文字符占比 < 50%
       2. 短文本（len <= 2）占比 > 60%
-      3. 平均文本长度 < 3
-      4. 非中非字母数字的符号占比 > 40%
-      5. 含特殊字符
-      6. 字母item占比 > 40%
+      3. 字母数字占比 > 30%
+      4. 标点符号占比 > 30%
+      5. 包含字母的 item 占比 > 40%
+      6. 包含特殊字符
     """
     if not items:
-        return 1.0
+        return 100.0
 
     n = len(items)
     all_text = ''.join(it['text'] for it in items)
     if not all_text:
-        return 1.0
+        return 100.0
 
     total = len(all_text)
     cn = len(_CN_RE.findall(all_text))
@@ -190,9 +190,9 @@ def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
 # 4. 顶部标题行 / 金额单位行识别与剔除
 # ------------------------------------------------------------
 def _detect_title_rows(
-    phys_rows: List[List[Dict]],
-    avg_h: float,
-    img_width: int,
+        phys_rows: List[List[Dict]],
+        avg_h: float,
+        img_width: int,
 ) :
     """检测顶部标题占据的物理行数（不含表头）。
 
@@ -234,9 +234,9 @@ def _detect_title_rows(
 
 
 def _remove_title_and_unit_rows(
-    items: List[Dict],
-    avg_h: float,
-    img_width: int,
+        items: List[Dict],
+        avg_h: float,
+        img_width: int,
 ) -> List[Dict]:
     """从 items 顶部剔除标题行和金额单位行。
 
@@ -295,15 +295,15 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
 # 5.2 公共工具：校验横竖线分布是否合理
 # ------------------------------------------------------------
 def _is_lines_distribution_valid(
-    lines: List[float],
-    content_min: float,
-    content_max: float,
-    content_size: float,
-    avg_h: float,
-    max_gap_ratio: float = 20.0,   # 竖线传 50，横线默认 20
-    min_lines: int = 3,            # 竖线传 2，横线默认 3
-    min_span_ratio: float = 0.5,
-    edge_tolerance_ratio: float = 0.3,
+        lines: List[float],
+        content_min: float,
+        content_max: float,
+        content_size: float,
+        avg_h: float,
+        max_gap_ratio: float = 20.0,   # 竖线传 50，横线默认 20
+        min_lines: int = 3,            # 竖线传 2，横线默认 3
+        min_span_ratio: float = 0.5,
+        edge_tolerance_ratio: float = 0.3,
 ) -> bool:
     """校验线分布是否合理（横竖线通用）。
 
@@ -356,8 +356,8 @@ def _is_lines_distribution_valid(
 # 5.3 大图降采样（只缩不放）
 # ------------------------------------------------------------
 def _maybe_downscale(
-    img: np.ndarray,
-    max_width: int = _MAX_DETECT_WIDTH,
+        img: np.ndarray,
+        max_width: int = _MAX_DETECT_WIDTH,
 ) -> Tuple[np.ndarray, float]:
     """只对大图降采样，小图原样返回。
 
@@ -390,16 +390,16 @@ def _maybe_downscale(
 # 5.4 横线检测：投影法
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
-    img: np.ndarray,
-    min_total_ratio: float = 0.3,      # ★ 从 0.5 降到 0.3（现在是下限约束）
-    min_px: int = 30,
-    threshold_val: int = 180,
-    content_width: float = None,  # 表格内容宽度（原图坐标）
-    content_y0: float = None,  # 内容区上边界（原图坐标）
-    content_y1: float = None,  # 内容区下边界（原图坐标）
-    avg_h: float = 20.0,  # 平均字高
-    min_h: float = None,  # 最小有效横线间距（去重阈值）
-    median_multiplier: float = 3.0,    # ★ 新增：中位数倍数
+        img: np.ndarray,
+        min_total_ratio: float = 0.3,      # 从 0.5 降到 0.3（现在是下限约束）
+        min_px: int = 30,
+        threshold_val: int = 180,
+        content_width: float = None,       # 表格内容宽度（原图坐标）
+        content_y0: float = None,          # 内容区上边界（原图坐标）
+        content_y1: float = None,          # 内容区下边界（原图坐标）
+        avg_h: float = 20.0,               # 平均字高
+        min_h: float = None,               # 最小有效横线间距（去重阈值）
+        median_multiplier: float = 3.0,    # 中位数倍数
 ) -> List[float]:
     """横线检测：投影法 + 自适应阈值 + 分布有效性校验（大图自动降采样）。
 
@@ -419,18 +419,18 @@ def _detect_horizontal_lines(
         min_total_ratio:    content_width 的下限系数
         min_px:             绝对下限（防止小图 ratio 失效）
         threshold_val:      二值化阈值
-        content_width:       表格内容宽度（原图坐标）
-        content_y0:          内容区上边界（原图坐标）
-        content_y1:          内容区下边界（原图坐标）
-        avg_h:               平均字高
-        min_h: 最小有效横线间距。若为 None，默认取 avg_h * 1.5。
-               用于过滤多行表头文字内部被误识别的伪线。
+        content_width:      表格内容宽度（原图坐标）
+        content_y0:         内容区上边界（原图坐标）
+        content_y1:         内容区下边界（原图坐标）
+        avg_h:              平均字高
+        min_h:              最小有效横线间距。若为 None，默认取 avg_h * 1.2。
+                            用于过滤多行表头文字内部被误识别的伪线。
         median_multiplier:  中位数倍数（越大越严格）
     """
     if img is None or img.size == 0:
         return []
 
-    # ★ 大图降采样
+    # 大图降采样
     img_detect, scale = _maybe_downscale(img)
 
     # content_width 跟着缩放
@@ -438,6 +438,7 @@ def _detect_horizontal_lines(
         content_width_detect = content_width * scale
     else:
         content_width_detect = img_detect.shape[1]
+
     # ---------- 2) 二值化 + 投影 ----------
     gray = cv2.cvtColor(img_detect, cv2.COLOR_BGR2GRAY)
     _, binary = cv2.threshold(gray, threshold_val, 255, cv2.THRESH_BINARY_INV)
@@ -453,7 +454,7 @@ def _detect_horizontal_lines(
     else:
         median_dark = 0.0
 
-    # ★ 混合阈值：三个约束取最大
+    # 混合阈值：三个约束取最大
     threshold = max(
         min_px,
         int(median_dark * median_multiplier),
@@ -461,14 +462,15 @@ def _detect_horizontal_lines(
     )
 
     rows = np.where(row_dark > threshold)[0]
+
     # ---------- 4) 合并 + 坐标映射回原图 ----------
     lines = _merge_adjacent_lines(rows)
     if scale != 1.0:
         lines = [y / scale for y in lines]
 
-    # ---------- ★ 5) 密集线去重 ----------
+    # ---------- 5) 密集线去重 ----------
     if min_h is None:
-        min_h = avg_h * 1.2   # 默认 1.5 倍行高
+        min_h = avg_h * 1.2   # 默认 1.2 倍行高
 
     if lines and min_h > 0:
         filtered_lines = [lines[0]]
@@ -479,17 +481,17 @@ def _detect_horizontal_lines(
             filtered_lines.append(y)
         lines = filtered_lines
 
-    # ---------- 5) 分布有效性校验 ----------
+    # ---------- 6) 分布有效性校验 ----------
     if content_y0 is not None and content_y1 is not None:
         content_height = content_y1 - content_y0
         if content_height > 0:
             if not _is_lines_distribution_valid(
-                lines, content_min=content_y0,
-                content_max=content_y1,
-                content_size=content_height,
-                avg_h=avg_h,
-                max_gap_ratio=20.0,   # 横线行高变化
-                min_lines=3,
+                    lines, content_min=content_y0,
+                    content_max=content_y1,
+                    content_size=content_height,
+                    avg_h=avg_h,
+                    max_gap_ratio=20.0,   # 横线行高变化
+                    min_lines=3,
             ):
                 print('横线分布不合理')
                 return []
@@ -519,11 +521,11 @@ def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
 
 
 def _detect_vertical_lines(
-    img: np.ndarray,
-    min_total_ratio: float = 0.3,        # 总暗像素至少占图高 30%
-    min_continuous_ratio: float = 0.15,  # 最长连续段至少占图高 15%
-    threshold_val: int = 180,
-    content_height : float=None
+        img: np.ndarray,
+        min_total_ratio: float = 0.3,        # 总暗像素至少占图高 30%
+        min_continuous_ratio: float = 0.15,  # 最长连续段至少占图高 15%
+        threshold_val: int = 180,
+        content_height: float = None
 ) -> List[float]:
     """竖线检测：暗像素总量 + 最长连续段 双条件。
 
@@ -544,7 +546,7 @@ def _detect_vertical_lines(
     if img is None or img.size == 0:
         return []
 
-    # ★ 大图降采样
+    # 大图降采样
     img_detect, scale = _maybe_downscale(img)
 
     # content_height 跟着缩放
@@ -574,7 +576,7 @@ def _detect_vertical_lines(
 
     lines = _merge_adjacent_lines(cols)
 
-    # ★ 坐标映射回原图
+    # 坐标映射回原图
     if scale != 1.0:
         lines = [x / scale for x in lines]
     return lines
@@ -584,8 +586,8 @@ def _detect_vertical_lines(
 # 6. 按横线硬边界切分单元格
 # ------------------------------------------------------------
 def _split_by_hard_boundaries(
-    col_items: List[Dict],
-    boundaries: List[float],
+        col_items: List[Dict],
+        boundaries: List[float],
 ) -> List[List[Dict]]:
     """按横线 y 坐标把某列的 items 切成单元格组。
 
@@ -628,9 +630,9 @@ def _split_by_hard_boundaries(
 # 7. 表头定位 —— 横线方案
 # ------------------------------------------------------------
 def _detect_header_by_lines(
-    items: List[Dict],
-    horizontal_lines: List[float],
-    colnum: int,
+        items: List[Dict],
+        horizontal_lines: List[float],
+        colnum: int,
 ) -> Tuple[List[Dict], List[Dict]]:
     """用横线定位表头。
     候选线条件：
@@ -652,7 +654,7 @@ def _detect_header_by_lines(
         # 若 bottom 落在某个 item 的 [y0 + margin, y1 - margin] 内，说明它穿过了文字
         is_fake_line = False
         for it in items:
-            # 容差 margin 取 33% 字高，防止抗锯齿边缘擦边被误判
+            # 容差 margin 取 30% 字高，防止抗锯齿边缘擦边被误判
             margin = it['h'] * 0.3
             if (it['y0'] + margin) < bottom < (it['y1'] - margin):
                 is_fake_line = True
@@ -660,6 +662,7 @@ def _detect_header_by_lines(
         if is_fake_line:
             # print(f'[跳过] y={bottom:.1f} 穿透文字实体')
             continue
+
         # 按横线切分上下区域
         above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
         below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
@@ -722,11 +725,15 @@ def _fill_column_headers(col_defs: List[Dict], header_items: List[Dict]) -> None
 
 
 def _split_mixed_anchor_column(
-    col_defs: List[Dict],
-    header_items: List[Dict],
-    avg_h: float,
+        col_defs: List[Dict],
+        header_items: List[Dict],
+        avg_h: float,
 ) -> List[Dict]:
-    """检查列内是否混入了多个表头词，若混入，结合字段语义与间距重新分列。"""
+    """检查列内是否混入了多个表头词，若混入，结合字段语义与间距重新分列。
+
+    场景：竖线漏检导致“序号”、“项目名称”、“项目业主”被框在同一列。
+    逻辑：如果一列内命中了 >= 2 个不同的已知字段且包含 project_name，则启动拆分。
+    """
     if not col_defs or not header_items:
         return col_defs
 
@@ -792,10 +799,10 @@ def _split_mixed_anchor_column(
                 # 规则 1：不同字段，且距离足够
                 elif prev_f is not None and curr_f is not None and prev_f != curr_f:
                     need_split = True
-                # 规则 2：单边命中
+                # 规则 2：单边命中（如“序号”与“项目名称”）
                 elif (prev_f is not None) != (curr_f is not None):
                     need_split = True
-                # 规则 3：靠间距
+                # 规则 3：靠间距判断
                 elif gap > avg_h * 1.5:
                     need_split = True
 
@@ -819,7 +826,7 @@ def _split_mixed_anchor_column(
                 else:
                     x1 = (items[-1]['x1'] + sub_columns[i + 1][0]['x0']) / 2.0
 
-                # ★ 保险 2：如果切出来的列宽太窄（< 2 倍字高），说明切分不合理，合并回上一列
+                # 保险：如果切出来的列宽太窄（< 2 倍字高），说明切分不合理，合并回上一列
                 if x1 - x0 < avg_h * 2.0 and new_col_defs and i == len(sub_columns) - 1:
                     new_col_defs[-1]['x1'] = x1
                     new_col_defs[-1]['xc'] = (new_col_defs[-1]['x0'] + x1) / 2.0
@@ -839,18 +846,16 @@ def _split_mixed_anchor_column(
 
 
 def _build_columns_from_vertical_lines(
-    vertical_lines: List[float],
-    img_width: int,
-    header_items: Optional[List[Dict]] = None,
-    avg_h: float = 20.0,
+        vertical_lines: List[float],
+        img_width: int,
+        header_items: Optional[List[Dict]] = None,
+        avg_h: float = 20.0,
 ) -> List[Dict]:
     """用竖线硬边界构造列定义。
 
     边界补充策略：
       - 仅当竖线外侧"确有表头 items"时才补 0 / img_width
       - 补充的边界与最近竖线间距必须 > avg_h * 0.5，防止造出窄空列
-
-    列数校验：竖线分出的列数与表头 items 数比值必须在 [0.5, 2.5] 内。
 
     返回 [{x0, x1, xc, header}, ...]；不可靠时返回 []。
     """
@@ -892,8 +897,8 @@ def _build_columns_from_vertical_lines(
 
 
 def _validate_vertical_columns(
-    col_defs: List[Dict],
-    header_items: List[Dict],
+        col_defs: List[Dict],
+        header_items: List[Dict],
 ) -> bool:
     """校验竖线列定义是否合理。
 
@@ -925,8 +930,8 @@ def _validate_vertical_columns(
 # 9. 匹配表头之后清除空列
 # ------------------------------------------------------------
 def _remove_empty_columns(
-    col_defs: List[Dict],
-    body_items: List[Dict],
+        col_defs: List[Dict],
+        body_items: List[Dict],
 ) -> List[Dict]:
     """移除"表头为空 且 无数据"的空列。
 
@@ -1024,9 +1029,9 @@ def _find_anchor_col_idx(col_defs: List[Dict], keyword: str = "项目名称") ->
 
 
 def group_cells_into_rows_with_anchor(
-    all_cells: List[Dict],
-    anchor_col_idx: int,
-    avg_h: float,
+        all_cells: List[Dict],
+        anchor_col_idx: int,
+        avg_h: float,
 ) -> List[List[Dict]]:
     """以锚点列的 cells 为行骨架，其他列的 cells 按 y 重叠挂靠。
 
@@ -1084,8 +1089,8 @@ def mean_of_lowest_pct(values, pct=0.2):
     return sum(lowest) / k
 
 def reconstruct_table_by_header(
-    items: List[Dict],
-    img: np.ndarray = None,
+        items: List[Dict],
+        img: np.ndarray = None,
 ) -> Tuple[Any, str]:
     """按表头定列重建表格。
 
@@ -1132,6 +1137,7 @@ def reconstruct_table_by_header(
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
     # showLines(img,vertical_lines,'v')
     # showLines(img,horizontal_lines,'h')
+
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
     # ------------------------------------------------------------
@@ -1152,7 +1158,7 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     header_items, body_items = _detect_header_by_lines(
         items, horizontal_lines, len(vertical_lines)-1,
-    )
+                                 )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
         return _fallback_paragraph(
@@ -1174,7 +1180,7 @@ def reconstruct_table_by_header(
             vertical_lines=vertical_lines,
         ), 'lines'
 
-    # ★ 新增：去除空列
+    # 去除空列
     col_defs = _remove_empty_columns(col_defs, body_items)
     if len(col_defs) < 2:
         return _fallback_paragraph(items), 'lines'
@@ -1240,8 +1246,8 @@ def reconstruct_table_by_header(
 # 14. 降级：段落模式
 # ------------------------------------------------------------
 def _fallback_split_by_hlines(
-    items: List[Dict],
-    horizontal_lines: List[float],
+        items: List[Dict],
+        horizontal_lines: List[float],
 ) -> List[List[Dict]]:
     """按横线硬边界把 items 切成行。补上下边界确保覆盖所有 items。"""
     boundaries = sorted(horizontal_lines)
@@ -1254,8 +1260,8 @@ def _fallback_split_by_hlines(
     return _split_by_hard_boundaries(items, boundaries)
 
 def _fallback_group_by_y(
-    items: List[Dict],
-    avg_h: float,
+        items: List[Dict],
+        avg_h: float,
 ) -> List[List[Dict]]:
     """y 中心聚类切行（原 _fallback_paragraph 的逻辑）。"""
     if not items:
@@ -1278,10 +1284,10 @@ def _fallback_group_by_y(
     return rows
 
 def _fallback_split_by_anchor(
-    items: List[Dict],
-    col_defs: List[Dict],
-    anchor_idx: int,
-    avg_h: float,
+        items: List[Dict],
+        col_defs: List[Dict],
+        anchor_idx: int,
+        avg_h: float,
 ) -> List[List[Dict]]:
     """以锚点列为骨架切行，其他列的 items 按 y 重叠挂靠。"""
     n = len(col_defs)
@@ -1359,8 +1365,8 @@ def _fallback_render_plain(rows: List[List[Dict]]) -> List[str]:
 
 
 def _fallback_render_with_columns(
-    rows: List[List[Dict]],
-    col_defs: List[Dict],
+        rows: List[List[Dict]],
+        col_defs: List[Dict],
 ) -> List[str]:
     """带列渲染：每行按列分组，列间 ' | ' 连接。"""
     n = len(col_defs)
@@ -1391,9 +1397,9 @@ def _fallback_render_with_columns(
     return result
 
 def _find_anchor_by_keywords(
-    items: List[Dict],
-    col_defs: List[Dict],
-    aliases: Optional[Tuple[str, ...]] = None,
+        items: List[Dict],
+        col_defs: List[Dict],
+        aliases: Optional[Tuple[str, ...]] = None,
 ) -> int:
     """按列内容匹配关键字找锚点列（不需要 header 字段）。
 
@@ -1437,9 +1443,9 @@ def _find_anchor_by_keywords(
     return best_idx
 
 def _fallback_paragraph(
-    items: List[Dict],
-    horizontal_lines: Optional[List[float]] = None,
-    vertical_lines: Optional[List[float]] = None,
+        items: List[Dict],
+        horizontal_lines: Optional[List[float]] = None,
+        vertical_lines: Optional[List[float]] = None,
 ) -> List[str]:
     """无法识别为表格时，按行输出纯文本。
 
@@ -1526,7 +1532,7 @@ def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
         if not items:
             return [], None
 
-        # ★ 乱码检测：直接跳过解析
+        # 乱码检测：直接跳过解析
         if _is_garbage_ocr(items):
             score = _garbage_score(items)
             print(f'OCR 结果疑似乱码（items={len(items)}, 乱码分={score:.2f}），跳过解析')
