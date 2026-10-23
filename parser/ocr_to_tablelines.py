@@ -16,19 +16,41 @@
 """
 
 import re
+import math
+import heapq
 import traceback
 from bisect import bisect_right
 from typing import List, Dict, Any, Tuple, Optional
 from parser.field_mapping import HEADER_ALIASES
 import cv2
 import numpy as np
+import regex
 from scipy.stats import trim_mean
 
 _rapid_engine = None
 
-# ============================================================
+# 中文字符
+_CN_RE = re.compile(r'[\u4e00-\u9fff]')
+# 数字 + 英文字母
+_ALNUM_RE = re.compile(r'[0-9A-Za-z]')
+# 特殊字符
+_SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
+
+# 标题关键字：命中即判为标题
+TITLE_KEYWORDS = (
+    '项目清单', '清单汇总', '项目分布', '项目计划表','项目计划','项目投资计划','投资项目计划',
+    '项目表', '项目一览', '项目汇总','项目名单','项目月报表','项目建设计划','投资计划表'
+)
+# 金额单位行正则，如"金额单位：万元"、"单位：亿元"
+UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
+
+# 线检测的目标宽度：超过此宽度才降采样，小于等于则原样
+_MAX_DETECT_WIDTH = 1600
+
+
+# ------------------------------------------------------------
 # 0. 引擎：延迟初始化 RapidOCR
-# ============================================================
+# ------------------------------------------------------------
 def _get_engine():
     """RapidOCR 引擎全局单例（首次调用时加载模型）。"""
     global _rapid_engine
@@ -37,14 +59,47 @@ def _get_engine():
         _rapid_engine = RapidOCR()
     return _rapid_engine
 
-# 中文字符
-_CN_RE = re.compile(r'[\u4e00-\u9fff]')
-# 数字 + 英文字母
-_ALNUM_RE = re.compile(r'[0-9A-Za-z]')
-import regex
-_SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
 
-# 乱码判断
+# ------------------------------------------------------------
+# 1. OCR 结果 → items
+# ------------------------------------------------------------
+def parse_items(result) -> List[Dict[str, Any]]:
+    """RapidOCR 输出 → 统一 items 列表。
+
+    每个 item 含文本 + 边界框 + 中心点 + 宽高。
+    文本会做清洗：去页码、去 "- N -"、去水印。
+    """
+    if result.boxes is None or result.txts is None:
+        return []
+
+    items = []
+    for poly, text in zip(result.boxes, result.txts):
+        # 文本清洗：页码 / 页脚 / 水印
+        text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
+        text = re.sub(r'^\s*[一\-—–－]\s*\d+\s*[一\-—–－]\s*$', ' ', text).strip()
+        watermark = re.fullmatch(r'©?基建通|建通|©基建', text)
+        if not text:
+            continue
+        if watermark:
+            continue
+
+        xs = [float(p[0]) for p in poly]
+        ys = [float(p[1]) for p in poly]
+        items.append({
+            'text': text,
+            'x0': min(xs), 'x1': max(xs),
+            'y0': min(ys), 'y1': max(ys),
+            'xc': sum(xs) / 4.0,
+            'yc': sum(ys) / 4.0,
+            'h':  max(ys) - min(ys),
+            'w':  max(xs) - min(xs),
+        })
+    return items
+
+
+# ------------------------------------------------------------
+# 2. 乱码判断
+# ------------------------------------------------------------
 def _garbage_score(items: List[Dict]) -> float:
     """计算 OCR 结果的"乱码分"，0~1，越高越乱。
 
@@ -99,55 +154,41 @@ def _is_garbage_ocr(items: List[Dict], threshold: float = 45) -> bool:
 
     return _garbage_score(items) >= threshold
 
-# ============================================================
-# 1. OCR 结果 → items
-# ============================================================
-def parse_items(result) -> List[Dict[str, Any]]:
-    """RapidOCR 输出 → 统一 items 列表。
 
-    每个 item 含文本 + 边界框 + 中心点 + 宽高。
-    文本会做清洗：去页码、去 "- N -"、去水印。
+# ------------------------------------------------------------
+# 3. 物理行切分（仅用于标题检测与文本方案）
+# ------------------------------------------------------------
+def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
+    """按 y 中心把 items 聚成物理行。
+
+    相邻 item 的 yc 与当前行均值差距 < 0.8*avg_h → 归入同一行。
+    维护 running sum，避免每轮重算均值（O(n²) → O(n)）。
     """
-    if result.boxes is None or result.txts is None:
+    if not items:
         return []
 
-    items = []
-    for poly, text in zip(result.boxes, result.txts):
-        # 文本清洗：页码 / 页脚 / 水印
-        text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
-        text = re.sub(r'^\s*[一\-—–－]\s*\d+\s*[一\-—–－]\s*$', ' ', text).strip()
-        watermark = re.fullmatch(r'©?基建通|建通|©基建', text)
-        if not text:
-            continue
-        if watermark:
-            continue
+    items_sorted = sorted(items, key=lambda x: x['yc'])
+    rows: List[List[Dict]] = []
+    curr: List[Dict] = [items_sorted[0]]
+    curr_sum = items_sorted[0]['yc']
 
-        xs = [float(p[0]) for p in poly]
-        ys = [float(p[1]) for p in poly]
-        items.append({
-            'text': text,
-            'x0': min(xs), 'x1': max(xs),
-            'y0': min(ys), 'y1': max(ys),
-            'xc': sum(xs) / 4.0,
-            'yc': sum(ys) / 4.0,
-            'h':  max(ys) - min(ys),
-            'w':  max(xs) - min(xs),
-        })
-    return items
+    for it in items_sorted[1:]:
+        curr_yc = curr_sum / len(curr)
+        if abs(it['yc'] - curr_yc) < avg_h * 0.8:
+            curr.append(it)
+            curr_sum += it['yc']
+        else:
+            rows.append(curr)
+            curr = [it]
+            curr_sum = it['yc']
+
+    rows.append(curr)
+    return rows
 
 
-# ============================================================
-# 2. 顶部标题行 / 金额单位行识别与剔除
-# ============================================================
-# 标题关键字：命中即判为标题
-TITLE_KEYWORDS = (
-    '项目清单', '清单汇总', '项目分布', '项目计划表','项目计划','项目投资计划','投资项目计划',
-    '项目表', '项目一览', '项目汇总','项目名单','项目月报表','项目建设计划','投资计划表'
-)
-# 金额单位行正则，如"金额单位：万元"、"单位：亿元"
-UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
-
-
+# ------------------------------------------------------------
+# 4. 顶部标题行 / 金额单位行识别与剔除
+# ------------------------------------------------------------
 def _detect_title_rows(
     phys_rows: List[List[Dict]],
     avg_h: float,
@@ -214,39 +255,9 @@ def _remove_title_and_unit_rows(
     return [it for it in items if id(it) not in to_exclude]
 
 
-# ============================================================
-# 3. 物理行切分（仅用于标题检测与文本方案）
-# ============================================================
-def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
-    """按 y 中心把 items 聚成物理行。
-
-    相邻 item 的 yc 与当前行均值差距 < 0.8*avg_h → 归入同一行。
-    维护 running sum，避免每轮重算均值（O(n²) → O(n)）。
-    """
-    if not items:
-        return []
-
-    items_sorted = sorted(items, key=lambda x: x['yc'])
-    rows: List[List[Dict]] = []
-    curr: List[Dict] = [items_sorted[0]]
-    curr_sum = items_sorted[0]['yc']
-
-    for it in items_sorted[1:]:
-        curr_yc = curr_sum / len(curr)
-        if abs(it['yc'] - curr_yc) < avg_h * 0.8:
-            curr.append(it)
-            curr_sum += it['yc']
-        else:
-            rows.append(curr)
-            curr = [it]
-            curr_sum = it['yc']
-
-    rows.append(curr)
-    return rows
-
-# ============================================================
-# 4. 表格线检测（横 / 竖）
-# ============================================================
+# ------------------------------------------------------------
+# 5. 表格线检测（横 / 竖）
+# ------------------------------------------------------------
 # 两个方向的检测思路：
 #   - 横线：投影法（一行暗像素总数）
 #   - 竖线：暗像素总量 + 最长连续段 双条件
@@ -255,7 +266,7 @@ def _split_physical_rows(items: List[Dict], avg_h: float) -> List[List[Dict]]:
 
 
 # ------------------------------------------------------------
-# 4.1 公共工具：合并相邻的线
+# 5.1 公共工具：合并相邻的线
 # ------------------------------------------------------------
 def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
     """把升序坐标索引合并为若干条线。
@@ -279,8 +290,9 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
     lines.append(float(np.mean(group)))
     return lines
 
+
 # ------------------------------------------------------------
-# 4.2 公共工具：校验横竖线分布是否合理
+# 5.2 公共工具：校验横竖线分布是否合理
 # ------------------------------------------------------------
 def _is_lines_distribution_valid(
     lines: List[float],
@@ -339,12 +351,10 @@ def _is_lines_distribution_valid(
 
     return True
 
-# ------------------------------------------------------------
-# 4.1.5 大图降采样（只缩不放）
-# ------------------------------------------------------------
-# 线检测的目标宽度：超过此宽度才降采样，小于等于则原样
-_MAX_DETECT_WIDTH = 1600
 
+# ------------------------------------------------------------
+# 5.3 大图降采样（只缩不放）
+# ------------------------------------------------------------
 def _maybe_downscale(
     img: np.ndarray,
     max_width: int = _MAX_DETECT_WIDTH,
@@ -377,7 +387,7 @@ def _maybe_downscale(
 
 
 # ------------------------------------------------------------
-# 4.2 横线检测：投影法
+# 5.4 横线检测：投影法
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
     img: np.ndarray,
@@ -485,8 +495,9 @@ def _detect_horizontal_lines(
                 return []
     return lines
 
+
 # ------------------------------------------------------------
-# 4.3 竖线检测：暗像素总量 + 最长连续段
+# 5.5 竖线检测：暗像素总量 + 最长连续段
 # ------------------------------------------------------------
 def _compute_max_run_per_column(binary_01: np.ndarray) -> np.ndarray:
     """计算每一列的最长连续 1 段长度。
@@ -568,9 +579,10 @@ def _detect_vertical_lines(
         lines = [x / scale for x in lines]
     return lines
 
-# ============================================================
-# 5. 按横线硬边界切分单元格
-# ============================================================
+
+# ------------------------------------------------------------
+# 6. 按横线硬边界切分单元格
+# ------------------------------------------------------------
 def _split_by_hard_boundaries(
     col_items: List[Dict],
     boundaries: List[float],
@@ -612,9 +624,9 @@ def _split_by_hard_boundaries(
     return cells
 
 
-# ============================================================
-# 6. 表头定位 —— 横线方案
-# ============================================================
+# ------------------------------------------------------------
+# 7. 表头定位 —— 横线方案
+# ------------------------------------------------------------
 def _detect_header_by_lines(
     items: List[Dict],
     horizontal_lines: List[float],
@@ -690,9 +702,10 @@ def _detect_header_by_lines(
 
     return header_items, body_items
 
-# ============================================================
-# 7. 表头定列 —— 竖线硬边界
-# ============================================================
+
+# ------------------------------------------------------------
+# 8. 表头定列 —— 竖线硬边界
+# ------------------------------------------------------------
 def _fill_column_headers(col_defs: List[Dict], header_items: List[Dict]) -> None:
     """把表头 items 按 x 落入各列，拼接成该列的 header 文本（原地修改）。"""
     buckets: List[List[Dict]] = [[] for _ in col_defs]
@@ -708,91 +721,6 @@ def _fill_column_headers(col_defs: List[Dict], header_items: List[Dict]) -> None
         col['header'] = ''.join(x['text'] for x in col_sorted)
 
 
-def _build_columns_from_vertical_lines(
-    vertical_lines: List[float],
-    img_width: int,
-    header_items: Optional[List[Dict]] = None,
-    avg_h: float = 20.0,
-) -> List[Dict]:
-    """用竖线硬边界构造列定义。
-
-    边界补充策略：
-      - 仅当竖线外侧"确有表头 items"时才补 0 / img_width
-      - 补充的边界与最近竖线间距必须 > avg_h * 0.5，防止造出窄空列
-
-    列数校验：竖线分出的列数与表头 items 数比值必须在 [0.5, 2.5] 内。
-
-    返回 [{x0, x1, xc, header}, ...]；不可靠时返回 []。
-    """
-    if len(vertical_lines) < 2:
-        return []
-
-    lines = sorted(vertical_lines)
-    min_gap = avg_h * 0.5
-
-    # 补左边界：竖线左侧有表头内容
-    if lines[0] > min_gap and header_items:
-        if any(it['xc'] < lines[0] for it in header_items):
-            lines = [0.0] + lines
-
-    # 补右边界：竖线右侧有表头内容
-    if img_width - lines[-1] > min_gap and header_items:
-        if any(it['xc'] > lines[-1] for it in header_items):
-            lines = lines + [float(img_width)]
-
-    n_cols = len(lines) - 1
-    if n_cols < 2:
-        return []
-
-    col_defs = [
-        {
-            'x0': lines[i], 'x1': lines[i + 1],
-            'x1': lines[i + 1],
-            'xc': (lines[i] + lines[i + 1]) / 2.0,
-            'header': '',
-        }
-        for i in range(n_cols)
-    ]
-
-    if header_items:
-        _fill_column_headers(col_defs, header_items)
-        col_defs = _split_mixed_anchor_column(col_defs, header_items, avg_h)
-
-    return col_defs
-
-
-def _validate_vertical_columns(
-    col_defs: List[Dict],
-    header_items: List[Dict],
-) -> bool:
-    """校验竖线列定义是否合理。
-
-    判据：
-      1. 列数 >= 2
-      2. 每列宽度 >= 15px（过滤误检的窄列）
-      3. 表头 items 至少覆盖一半的列
-    """
-    if len(col_defs) < 2:
-        return False
-
-    if any((c['x1'] - c['x0']) < 15 for c in col_defs):
-        return False
-
-    hit_cols = set()
-    for it in header_items:
-        for i, c in enumerate(col_defs):
-            if c['x0'] <= it['xc'] < c['x1']:
-                hit_cols.add(i)
-                break
-
-    if len(hit_cols) < max(2, len(col_defs) // 2):
-        return False
-
-    return True
-
-# ------------------------------------------------------------
-# 7.4 基于表头文字拆分混合列。（竖线检测遗漏的补充措施）
-# ------------------------------------------------------------
 def _split_mixed_anchor_column(
     col_defs: List[Dict],
     header_items: List[Dict],
@@ -909,9 +837,93 @@ def _split_mixed_anchor_column(
 
     return new_col_defs
 
-# =============================================
-# 匹配表头之后清除空列
-# =============================================
+
+def _build_columns_from_vertical_lines(
+    vertical_lines: List[float],
+    img_width: int,
+    header_items: Optional[List[Dict]] = None,
+    avg_h: float = 20.0,
+) -> List[Dict]:
+    """用竖线硬边界构造列定义。
+
+    边界补充策略：
+      - 仅当竖线外侧"确有表头 items"时才补 0 / img_width
+      - 补充的边界与最近竖线间距必须 > avg_h * 0.5，防止造出窄空列
+
+    列数校验：竖线分出的列数与表头 items 数比值必须在 [0.5, 2.5] 内。
+
+    返回 [{x0, x1, xc, header}, ...]；不可靠时返回 []。
+    """
+    if len(vertical_lines) < 2:
+        return []
+
+    lines = sorted(vertical_lines)
+    min_gap = avg_h * 0.5
+
+    # 补左边界：竖线左侧有表头内容
+    if lines[0] > min_gap and header_items:
+        if any(it['xc'] < lines[0] for it in header_items):
+            lines = [0.0] + lines
+
+    # 补右边界：竖线右侧有表头内容
+    if img_width - lines[-1] > min_gap and header_items:
+        if any(it['xc'] > lines[-1] for it in header_items):
+            lines = lines + [float(img_width)]
+
+    n_cols = len(lines) - 1
+    if n_cols < 2:
+        return []
+
+    col_defs = [
+        {
+            'x0': lines[i], 'x1': lines[i + 1],
+            'x1': lines[i + 1],
+            'xc': (lines[i] + lines[i + 1]) / 2.0,
+            'header': '',
+        }
+        for i in range(n_cols)
+    ]
+
+    if header_items:
+        _fill_column_headers(col_defs, header_items)
+        col_defs = _split_mixed_anchor_column(col_defs, header_items, avg_h)
+
+    return col_defs
+
+
+def _validate_vertical_columns(
+    col_defs: List[Dict],
+    header_items: List[Dict],
+) -> bool:
+    """校验竖线列定义是否合理。
+
+    判据：
+      1. 列数 >= 2
+      2. 每列宽度 >= 15px（过滤误检的窄列）
+      3. 表头 items 至少覆盖一半的列
+    """
+    if len(col_defs) < 2:
+        return False
+
+    if any((c['x1'] - c['x0']) < 15 for c in col_defs):
+        return False
+
+    hit_cols = set()
+    for it in header_items:
+        for i, c in enumerate(col_defs):
+            if c['x0'] <= it['xc'] < c['x1']:
+                hit_cols.add(i)
+                break
+
+    if len(hit_cols) < max(2, len(col_defs) // 2):
+        return False
+
+    return True
+
+
+# ------------------------------------------------------------
+# 9. 匹配表头之后清除空列
+# ------------------------------------------------------------
 def _remove_empty_columns(
     col_defs: List[Dict],
     body_items: List[Dict],
@@ -942,9 +954,11 @@ def _remove_empty_columns(
     #     print(f'移除 {removed} 个空列')
 
     return kept
-# ============================================================
-# 8. 把 item 分配到某一列
-# ============================================================
+
+
+# ------------------------------------------------------------
+# 10. 把 item 分配到某一列
+# ------------------------------------------------------------
 def _assign_column(xc: float, col_defs: List[Dict]) -> int:
     """按列定义的 x 区间把 xc 分配到列索引。
 
@@ -959,10 +973,9 @@ def _assign_column(xc: float, col_defs: List[Dict]) -> int:
     return max(0, len(col_defs) - 1)
 
 
-# ============================================================
-# 9. 单元格内文字拼接
-# ============================================================
-# 同一列
+# ------------------------------------------------------------
+# 11. 单元格内文字拼接
+# ------------------------------------------------------------
 def _cell_text(cell_items: List[Dict], type: str) -> str:
     """把一个单元格内的 items 按阅读顺序拼接。
 
@@ -999,9 +1012,9 @@ def _cell_text(cell_items: List[Dict], type: str) -> str:
     return ' '.join(text_lines)
 
 
-# ============================================================
-# 10. 锚点列：以"项目名称"列为骨架分行
-# ============================================================
+# ------------------------------------------------------------
+# 12. 锚点列：以"项目名称"列为骨架分行
+# ------------------------------------------------------------
 def _find_anchor_col_idx(col_defs: List[Dict], keyword: str = "项目名称") -> int:
     """在 col_defs 里找表头含关键字的列索引，找不到返回 -1。"""
     for i, c in enumerate(col_defs):
@@ -1058,11 +1071,9 @@ def group_cells_into_rows_with_anchor(
     return [row['cells'] for row in anchor_rows]
 
 
-# ============================================================
-# 11. 主函数：按表头定列重建表格
-# ============================================================
-import heapq, math
-
+# ------------------------------------------------------------
+# 13. 主函数：按表头定列重建表格
+# ------------------------------------------------------------
 def mean_of_lowest_pct(values, pct=0.2):
     """values 可以是任意可迭代对象（含生成器）"""
     vals = list(values)
@@ -1225,9 +1236,9 @@ def reconstruct_table_by_header(
     return result, 'table'
 
 
-# ============================================================
-# 12. 降级：段落模式
-# ============================================================
+# ------------------------------------------------------------
+# 14. 降级：段落模式
+# ------------------------------------------------------------
 def _fallback_split_by_hlines(
     items: List[Dict],
     horizontal_lines: List[float],
@@ -1492,9 +1503,9 @@ def _fallback_paragraph(
     return _fallback_render_plain(_fallback_group_by_y(items, avg_h))
 
 
-# ============================================================
-# 13. 统一入口
-# ============================================================
+# ------------------------------------------------------------
+# 15. 统一入口
+# ------------------------------------------------------------
 def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
     """图片字节 → (result, mode)。
 
@@ -1529,7 +1540,6 @@ def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
         traceback.print_exc()
         print(f"OCR 失败: {type(ex).__name__}: {ex}")
         return [], None
-
 
 # ============================================================
 # 14. 批量遍历脚本
