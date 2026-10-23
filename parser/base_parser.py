@@ -46,7 +46,7 @@ PROJECT_TYPE_WORDS = (
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
-CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基')
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
 from parser.ocr_to_tablelines import TITLE_KEYWORDS
@@ -545,7 +545,7 @@ class BaseParser(ABC):
         # 形态2:性质分组行(序号列空 + 名称列 "性质词+项目")
         # 形态2:性质分组行(序号列 + 名称列 "性质词+项目")
         if header_map is not None and cells and (not str(cells[0] or '').strip()
-                or re.fullmatch(r'^[（(]{0,1}[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]{0,1}[、.．\s]{0,1}', str(cells[0]))):
+                or re.fullmatch(r'^[（(]{0,1}[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]{0,1}[、.．\s]{0,1}', str(cells[0]))):
             name_col = next((c for c, f in header_map.items() if f == 'project_name'), None)
             if name_col is None or name_col >= len(cells):
                 return ''
@@ -599,7 +599,7 @@ class BaseParser(ABC):
             return True
         # 罗马数字序号 = 三级分类(如 "Ⅰ、机场（9项）"):追加到当前二级分类下
         # 构成 "一级-二级-三级"(与 update_category_context 的罗马分支一致)
-        m_roman = re.match(r'^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[、.．]\s*(.+)$', value)
+        m_roman = re.match(r'^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[、.．]\s*(.+)$', value)
         if m_roman:
             cat = re.sub(r'[（(]\d+\s*(?:个|项)[)）].*$', '', m_roman.group(1)).strip()
             cat = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', cat).strip()
@@ -618,7 +618,7 @@ class BaseParser(ABC):
         # 括号序号二级标题(如 "（一）交通（104项）" / "（一）交通"):追加到当前
         # 一级分类下("基础设施"+"交通" → "基础设施-交通"),同级 "（二）" 替换最后一段;
         # 与 update_category_context 的 m2 语义一致(替代 _set_category 替换,不丢一级)
-        m_seq = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]\s*(.+)$', value)
+        m_seq = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', value)
         if m_seq:
             raw_sub = m_seq.group(1).strip()
             # 统计后缀(量词 "2个" 或 括号整数 "（10）")→ 直接认作分类标题;
@@ -853,7 +853,7 @@ class BaseParser(ABC):
                 continue
             if name.endswith('中心'):
                 pass
-            if name.replace(' ', '').startswith(('合计', '总计', '小计')):
+            if name.replace(' ', '').startswith(('合计', '总计', '小计','共计')):
                 continue
             if re.fullmatch(r'项目数\s*[\d,，.．]*\s*(?:个|项|件)?', name):
                 continue
@@ -899,13 +899,13 @@ class BaseParser(ABC):
         括号序号标题(如 "(1)高速公路项目"、"（一）电子信息")要求短标题(≤15 字)
         或含项数,避免 "(3)银川市…光伏发电项目" 这类子序号+完整项目名的数据行误判。
         """
-        m = re.match(r'^[（(]\s*(?:[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+|\d+)\s*[)）]\s*(.+)$', name)
+        m = re.match(r'^[（(]\s*(?:[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+|\d+)\s*[)）]\s*(.+)$', name)
         if m:
             # 分类名单词或数字量词结尾(如 "（一）实验室体系建设项目2个")
             return (BaseParser._looks_like_category(m.group(1))
                     or re.search(r'\d+\s*(?:个|项|件)\s*$', m.group(1)))
         return bool(
-            re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+、', name)
+            re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+、', name)
             or re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个)?[)）]', name)
             # "——" 子分类行(如 "——铁路"),路由到 update_category_context 处理
             or re.match(r'^[—－-]{2,}\s*\S', name)
@@ -940,8 +940,8 @@ class BaseParser(ABC):
         if not (re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个)[^）)]*[)）]', text)
                 # 无"项/个"的括号数字仅认行首(避免数据行内容如 "小（1）型水库" 误触发)
                 or re.match(r'^[（(]\s*\d+\s*[)）]', text)
-                or re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ①②③④⑤⑥⑦⑧⑨⑩]+[、.．\s]', text)
-                or re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]', text)
+                or re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ①②③④⑤⑥⑦⑧⑨⑩]+[、.．\s]', text)
+                or re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]', text)
                 # -1 分类
                 or re.match(r'^-\d+\s+', text)
                 or re.match(r'^[（(]\s*\d+\s*[)）]', text)
@@ -991,7 +991,7 @@ class BaseParser(ABC):
             BaseParser._record_declared(text, context)
             return True
 
-        m2 = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]\s*(.+)$', text)
+        m2 = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', text)
         if m2:
             sub_raw = m2.group(1)
             # 概况说明文字(如 "市住建委 项目14个，2025年计划完成4.36亿元")→ 跳过不设分类
@@ -1035,7 +1035,7 @@ class BaseParser(ABC):
         # 三级标题:数字序号括号标题,如 "(1)高速公路项目"
         # 三级标题:-数字序号 ,如 "-1 信息基础设施项目"
         # 注意 "(3)银川市…光伏发电项目" 是子序号+项目名(数据行),非分类标题
-        # ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ 优先三级标题
+        # ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ 优先三级标题
         m3 = re.match(r'^[（(]\s*\d+\s*[)）]\s*(.+)$', text)
         is_roman = False
         if not m3:
@@ -1044,7 +1044,7 @@ class BaseParser(ABC):
             is_roman = bool(m3)
         if not m3:
             # 罗马数字 / 带圈序号(如 "① 交通项目7个")= 三级分类
-            m3 = re.match(r'^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ①②③④⑤⑥⑦⑧⑨⑩]+[、.．\s]\s*(.+)$', text)
+            m3 = re.match(r'^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫXI①②③④⑤⑥⑦⑧⑨⑩XIV]+[、.．\s]\s*(.+)$', text)
             is_roman = bool(m3)
         if m3:
             sub_raw = m3.group(1)
@@ -1168,11 +1168,11 @@ class BaseParser(ABC):
         name = re.sub(r'^[①②③④⑤⑥⑦⑧⑨⑩]+\s*', '', name)
         name = re.sub(r'^[-]+\s*', '', name)
         # 括号序号("（一）房地产" → "房地产")
-        name = re.sub(r'^[（(]\s*[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ\d]+\s*[)）]\s*', '', name)
+        name = re.sub(r'^[（(]\s*[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ\d]+\s*[)）]\s*', '', name)
         # 合并序号范围/残留("428-442 4.房地产开发" → "4.房地产开发";"-442" → "";"2+4…" 无破折号不误去)
         name = re.sub(r'^[\d－-]*[－-][\d－-]*\s*', '', name)
         # 顿号/点号序号("1、工业" / "一、工业" / "4.房地产开发" → "工业/房地产开发";"2+4…" 的"+"非分隔,不误去)
-        name = re.sub(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ\d]+\s*[、.．]\s*', '', name)
+        name = re.sub(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ\d]+\s*[、.．]\s*', '', name)
         name = re.sub(r'^[、,，.\s]+', '', name)
         name = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?[^）)]*[)）].*$', '', name)
         # 无括号项数("项目45个" 的 "45个"/"项目2件")→ 去
@@ -1250,8 +1250,8 @@ class BaseParser(ABC):
         """
         t = text.strip()
         if not re.match(
-                r'^(?:[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[、.．\s]'
-                r'|[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ]+[)）]'
+                r'^(?:[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[、.．\s]'
+                r'|[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]'
                 r'|[\d]+[、.．]|[—－-]{2,})', t):
             return False
         return bool(re.search(
@@ -1614,8 +1614,12 @@ class BaseParser(ABC):
             if not name:
                 continue
             # 上下文分类仅补充,不覆盖 项目类别/产业类别 列的映射值
+            if re.fullmatch(r'\d+',project.get('category','')):
+                project.update({'category':''})
             if context.get('category') and not project.get('category'):
                 project['category'] = context['category']
+            elif not context.get('category') and project.get('category'):
+                context['category'] = project.get('category')
             if not project.get('project_type'):
                 project['project_type'] = context.get('project_type', '')
             project['source_row'] = row_i  # 表格内行号(表头后第 1 行 = 1)
