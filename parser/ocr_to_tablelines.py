@@ -280,59 +280,62 @@ def _merge_adjacent_lines(indices: np.ndarray, gap: int = 3) -> List[float]:
     return lines
 
 # ------------------------------------------------------------
-# 4.2 公共工具：校验横线分布是否合理
+# 4.2 公共工具：校验横竖线分布是否合理
 # ------------------------------------------------------------
-def _is_horizontal_lines_valid(
-    horizontal_lines: List[float],
-    content_y0: float,
-    content_y1: float,
-    content_height: float,
+def _is_lines_distribution_valid(
+    lines: List[float],
+    content_min: float,
+    content_max: float,
+    content_size: float,
     avg_h: float,
+    max_gap_ratio: float = 20.0,   # 竖线传 50，横线默认 20
+    min_lines: int = 3,            # 竖线传 2，横线默认 3
+    min_span_ratio: float = 0.5,
+    edge_tolerance_ratio: float = 0.3,
 ) -> bool:
-    """校验横线分布是否合理。
+    """校验线分布是否合理（横竖线通用）。
 
     判据：
-      1. 纵向跨度：最上最下线之间的距离 >= content_height 的 50%
-         （或 >= avg_h * 5，取二者较小值，兼容短表格）
-      2. 分布均匀：相邻线间距的最大值不超过最小值的 20 倍
-      3. 首尾覆盖：第一条线距 content_y0、最后一条线距 content_y1
-         都 <= content_height 的 30%
+      1. 纵向/横向跨度：最远两线距离 >= min(content_size * 0.5, avg_h * 5)
+      2. 首尾覆盖：首线距 content_min、末线距 content_max 均 <= content_size * 0.3
+      3. 间距规律：相邻间距的最大值不超过最小值的 max_gap_ratio 倍
 
     参数：
-        horizontal_lines: 横线 y 坐标（升序）
-        content_y0/y1:    内容区上下边界（原图坐标）
-        content_height:   内容区高度
-        avg_h:            平均字高
-
-    返回：True 表示有效，False 表示应丢弃。
+        lines:                  坐标列表
+        content_min:            内容区起点（横线 y0 / 竖线 x0）
+        content_max:            内容区终点（横线 y1 / 竖线 x1）
+        content_size:           内容区跨度（高度 / 宽度）
+        avg_h:                  平均字高（用于短表格兜底）
+        max_gap_ratio:          最大/最小间距比容忍度
+        min_lines:              最低有效线数
     """
-    if len(horizontal_lines) < 3:
+    if not lines or len(lines) < min_lines:
         return False
 
-    lines = sorted(horizontal_lines)
-    top = lines[0]
-    bottom = lines[-1]
+    lines = sorted(lines)
+    first = lines[0]
+    last = lines[-1]
 
-    # ---------- 判据 1：纵向跨度 ----------
-    span = bottom - top
-    min_span = min(content_height * 0.5, avg_h * 5.0)
-    if span < min_span:
+    # ---------- 判据 1：跨度 ----------
+    span = last - first
+    if span < min(content_size * min_span_ratio, avg_h * 5.0):
         return False
 
-    # ---------- 判据 2：间距规律 ----------
+    # ---------- 判据 2：首尾覆盖 ----------
+    if first - content_min > content_size * edge_tolerance_ratio:
+        return False
+    if content_max - last > content_size * edge_tolerance_ratio:
+        return False
+
+    # ---------- 判据 3：间距规律 ----------
     gaps = [lines[i] - lines[i - 1] for i in range(1, len(lines))]
-    min_gap = min(gaps)
-    max_gap = max(gaps)
-    if min_gap <= 0:
-        return False
-    if max_gap / min_gap > 20:
-        return False
-
-    # ---------- 判据 3：首尾覆盖 ----------
-    if top - content_y0 > content_height * 0.3:
-        return False
-    if content_y1 - bottom > content_height * 0.3:
-        return False
+    if gaps:
+        min_gap = min(gaps)
+        max_gap = max(gaps)
+        if min_gap <= 0:
+            return False
+        if max_gap / min_gap > max_gap_ratio:
+            return False
 
     return True
 
@@ -470,8 +473,13 @@ def _detect_horizontal_lines(
     if content_y0 is not None and content_y1 is not None:
         content_height = content_y1 - content_y0
         if content_height > 0:
-            if not _is_horizontal_lines_valid(
-                lines, content_y0, content_y1, content_height, avg_h,
+            if not _is_lines_distribution_valid(
+                lines, content_min=content_y0,
+                content_max=content_y1,
+                content_size=content_height,
+                avg_h=avg_h,
+                max_gap_ratio=20.0,   # 横线行高变化
+                min_lines=3,
             ):
                 print('横线分布不合理')
                 return []
@@ -632,8 +640,8 @@ def _detect_header_by_lines(
         # 若 bottom 落在某个 item 的 [y0 + margin, y1 - margin] 内，说明它穿过了文字
         is_fake_line = False
         for it in items:
-            # 容差 margin 取 15% 字高，防止抗锯齿边缘擦边被误判
-            margin = it['h'] * 0.15
+            # 容差 margin 取 33% 字高，防止抗锯齿边缘擦边被误判
+            margin = it['h'] * 0.3
             if (it['y0'] + margin) < bottom < (it['y1'] - margin):
                 is_fake_line = True
                 break
@@ -748,6 +756,7 @@ def _build_columns_from_vertical_lines(
 
     if header_items:
         _fill_column_headers(col_defs, header_items)
+        col_defs = _split_mixed_anchor_column(col_defs, header_items, avg_h)
 
     return col_defs
 
@@ -780,6 +789,125 @@ def _validate_vertical_columns(
         return False
 
     return True
+
+# ------------------------------------------------------------
+# 7.4 基于表头文字拆分混合列。（竖线检测遗漏的补充措施）
+# ------------------------------------------------------------
+def _split_mixed_anchor_column(
+    col_defs: List[Dict],
+    header_items: List[Dict],
+    avg_h: float,
+) -> List[Dict]:
+    """检查列内是否混入了多个表头词，若混入，结合字段语义与间距重新分列。"""
+    if not col_defs or not header_items:
+        return col_defs
+
+    # 提前抽离，避免重复生成
+    flat_aliases = {}
+    for field, aliases in HEADER_ALIASES.items():
+        for alias in aliases:
+            flat_aliases[alias] = field
+
+    def get_field(text: str) -> Optional[str]:
+        if not text: return None
+        for alias, field in flat_aliases.items():
+            if alias in text:
+                return field
+        return None
+
+    new_col_defs: List[Dict] = []
+
+    for c in col_defs:
+        # 快速短路：如果这列宽度很窄，不可能塞下多个复杂表头
+        if c['x1'] - c['x0'] < avg_h * 3:
+            new_col_defs.append(c)
+            continue
+
+        # 1) 找落在这个列区间内的所有表头 items
+        col_all_headers = [
+            it for it in header_items
+            if c['x0'] <= it['xc'] < c['x1']
+        ]
+
+        if not col_all_headers:
+            new_col_defs.append(c)
+            continue
+
+        # 2) 提取命中的具体表头类型
+        distinct_fields = set()
+        for it in col_all_headers:
+            f = get_field(it.get('text') or '')
+            if f:
+                distinct_fields.add(f)
+
+        # 3) 拦截条件：必须混入 >= 2 个字段，且包含项目名称
+        if len(distinct_fields) >= 2 and 'project_name' in distinct_fields:
+            col_all_headers.sort(key=lambda x: x['x0'])
+
+            # 4) 聚类
+            sub_columns: List[List[Dict]] = []
+            curr_items = [col_all_headers[0]]
+
+            for i in range(1, len(col_all_headers)):
+                prev = col_all_headers[i - 1]
+                curr = col_all_headers[i]
+
+                prev_f = get_field(prev['text'])
+                curr_f = get_field(curr['text'])
+                gap = curr['x0'] - prev['x1']
+
+                need_split = False
+
+                # 核心防断逻辑：如果间距极小，认为是同一个复合词（如“项目及单位”），不切
+                if gap < avg_h * 0.5:
+                    need_split = False
+                # 规则 1：不同字段，且距离足够
+                elif prev_f is not None and curr_f is not None and prev_f != curr_f:
+                    need_split = True
+                # 规则 2：单边命中
+                elif (prev_f is not None) != (curr_f is not None):
+                    need_split = True
+                # 规则 3：靠间距
+                elif gap > avg_h * 1.5:
+                    need_split = True
+
+                if need_split:
+                    sub_columns.append(curr_items)
+                    curr_items = [curr]
+                else:
+                    curr_items.append(curr)
+
+            sub_columns.append(curr_items)
+
+            # 5) 构造新列 + 物理宽度防线
+            for i, items in enumerate(sub_columns):
+                if i == 0:
+                    x0 = c['x0']
+                else:
+                    x0 = (sub_columns[i - 1][-1]['x1'] + items[0]['x0']) / 2.0
+
+                if i == len(sub_columns) - 1:
+                    x1 = c['x1']
+                else:
+                    x1 = (items[-1]['x1'] + sub_columns[i + 1][0]['x0']) / 2.0
+
+                # ★ 保险 2：如果切出来的列宽太窄（< 2 倍字高），说明切分不合理，合并回上一列
+                if x1 - x0 < avg_h * 2.0 and new_col_defs and i == len(sub_columns) - 1:
+                    new_col_defs[-1]['x1'] = x1
+                    new_col_defs[-1]['xc'] = (new_col_defs[-1]['x0'] + x1) / 2.0
+                    new_col_defs[-1]['header'] += ''.join(it['text'] for it in items)
+                else:
+                    header_text = ''.join(it['text'] for it in items)
+                    new_col_defs.append({
+                        'x0': x0,
+                        'x1': x1,
+                        'xc': (x0 + x1) / 2.0,
+                        'header': header_text,
+                    })
+        else:
+            new_col_defs.append(c)
+
+    return new_col_defs
 
 # =============================================
 # 匹配表头之后清除空列
@@ -972,12 +1100,15 @@ def reconstruct_table_by_header(
     # ------------------------------------------------------------
     # 步骤 1：检测横竖线
     # ------------------------------------------------------------
-    content_width = max(it['x1'] for it in items) - min(it['x0'] for it in items)
+    content_x0 = min(it['x0'] for it in items)
+    content_x1 = max(it['x1'] for it in items)
+    content_width = content_x1 - content_x0
     content_y0 = min(it['y0'] for it in items)
     content_y1 = max(it['y1'] for it in items)
-    min_h = mean_of_lowest_pct((it['h'] for it in items), 0.2)
     content_height = content_y1 - content_y0
+    min_h = mean_of_lowest_pct((it['h'] for it in items), 0.2)
     vertical_lines = _detect_vertical_lines(img,content_height=content_height) if img is not None else []
+    # 竖线暂时没进行有效性检测，存在漏线情况，后续将项目名称强制提出。
     # horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
     horizontal_lines = _detect_horizontal_lines(
         img,
@@ -1514,7 +1645,10 @@ if __name__ == "__main__":
 
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2v020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单1.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\31.jpg'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\7.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\12.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0002.jpg'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\1.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png
