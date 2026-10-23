@@ -24,6 +24,7 @@ from util.db_util import AsyncDB
 from util.file_config import skpFilePath
 from util.go_fast import GoFast
 from util.log_util import get_logger
+from util.filter_utils import match_any
 
 logger = get_logger(__file__)
 
@@ -82,21 +83,6 @@ def detect_area(path: Path) -> Tuple[int, int]:
     year = int(years[-1]) if years else 0
     return area, year
 
-_FILTER_CACHE: dict[Path, tuple[float | None, frozenset[str]]] = {}
-def _load_filter_names(filter_file: Path) -> frozenset[str]:
-    """读取 filter_file.txt,按 \\n 拆分成非空文件名集合(带 mtime 缓存)。"""
-    mtime = filter_file.stat().st_mtime if filter_file.exists() else None
-    cached = _FILTER_CACHE.get(filter_file)
-    if cached is not None and cached[0] == mtime:
-        return cached[1]
-
-    names: frozenset[str] = frozenset()
-    if mtime is not None:
-        with filter_file.open("r", encoding="utf-8") as f:
-            names = frozenset(n.strip() for n in f.read().split("\n") if n.strip())
-    _FILTER_CACHE[filter_file] = (mtime, names)
-    return names
-
 async def process_file(db: AsyncDB, base_dir: Path, file_path: Path,
                        upload: bool = True) -> FileResult:
     """处理单个文件:去重 → 解析 → 上传 GoFast → 单事务入库。
@@ -108,12 +94,8 @@ async def process_file(db: AsyncDB, base_dir: Path, file_path: Path,
     rel_path = str(file_path.relative_to(base_dir))
     # print(file_path)
     # ---- 过滤:命中 filter_file.txt 中的任意名称则跳过 ----
-    filter_file = Path(__file__).resolve().parent / "filter_file.txt"
-    skip_names = _load_filter_names(filter_file)
-    file_str = str(file_path)
-    hit = next((n for n in skip_names if n in file_str), None)
-    if hit is not None:
-        print(f"[SKIP] {file_str} 命中过滤项: {hit!r}")
+    if (rule := match_any(file_path)):          # 规则文件默认当前目录
+        # print(f"[SKIP] {file_path} 命中规则 {rule!r}")
         return FileResult(file_name, rel_path, 'skipped_filter',error='跳过该文件（filter_file.txt）')
 
     ext = file_path.suffix.lower()
