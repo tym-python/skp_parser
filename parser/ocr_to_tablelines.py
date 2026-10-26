@@ -391,6 +391,7 @@ def _maybe_downscale(
 # ------------------------------------------------------------
 def _detect_horizontal_lines(
         img: np.ndarray,
+        items: List[Dict],
         min_total_ratio: float = 0.3,  # 从 0.5 降到 0.3（现在是下限约束）
         min_px: int = 30,
         threshold_val: int = 180,
@@ -481,7 +482,10 @@ def _detect_horizontal_lines(
             filtered_lines.append(y)
         lines = filtered_lines
 
-    # ---------- 6) 分布有效性校验 ----------
+    # ---------- 6) 穿透文字过滤 ----------
+    lines = _filter_cross_lines(lines, items)
+
+    # ---------- 7) 分布有效性校验 ----------
     if content_y0 is not None and content_y1 is not None:
         content_height = content_y1 - content_y0
         if content_height > 0:
@@ -583,6 +587,32 @@ def _detect_vertical_lines(
 
 
 # ------------------------------------------------------------
+# 5.6 过滤穿过文字实体的伪横线
+# ------------------------------------------------------------
+def _filter_cross_lines(horizontal_lines: List[float], items: List[Dict]) -> List[float]:
+    """过滤掉穿透文字实体的伪横线（如多行表头内部被误识别的线）。
+
+    容差 margin 取 30% 字高，防止抗锯齿边缘擦边被误判。
+    """
+    if not horizontal_lines or not items:
+        return horizontal_lines
+
+    valid_lines: List[float] = []
+    for line_y in horizontal_lines:
+        # 使用生成器表达式配合 any，一旦命中立即返回 True，避免多余遍历
+        is_fake_line = any(
+            (it['y0'] + it['h'] * 0.3) < line_y < (it['y1'] - it['h'] * 0.3)
+            for it in items
+        )
+
+        if not is_fake_line:
+            valid_lines.append(line_y)
+        # else:
+        #     print(f'[跳过] y={line_y:.1f} 穿透文字实体')
+
+    return valid_lines
+
+# ------------------------------------------------------------
 # 6. 按横线硬边界切分单元格
 # ------------------------------------------------------------
 def _split_by_hard_boundaries(
@@ -638,7 +668,6 @@ def _detect_header_by_lines(
     候选线条件：
       1. 上方/下方 items 数 >= 2
       2. 命中 HEADER_ALIASES 字段数达标，或命中 project_name
-      3. 线不能穿透文字实体（防止多行表头内部的伪线干扰）
 
     返回 (header_items, body_items)；不可靠时返回 ([], items)。
     """
@@ -647,22 +676,9 @@ def _detect_header_by_lines(
 
     # 收集候选线：前 4 条（含 lines[0]）
     candidates = horizontal_lines[:4]
-
     best_bottom = None
 
     for bottom in candidates[1:]:
-        # 若 bottom 落在某个 item 的 [y0 + margin, y1 - margin] 内，说明它穿过了文字
-        is_fake_line = False
-        for it in items:
-            # 容差 margin 取 30% 字高，防止抗锯齿边缘擦边被误判
-            margin = it['h'] * 0.3
-            if (it['y0'] + margin) < bottom < (it['y1'] - margin):
-                is_fake_line = True
-                break
-        if is_fake_line:
-            # print(f'[跳过] y={bottom:.1f} 穿透文字实体')
-            continue
-
         # 按横线切分上下区域
         above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
         below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
@@ -1129,6 +1145,7 @@ def reconstruct_table_by_header(
     # horizontal_lines = _detect_horizontal_lines(img,content_width=content_width) if img is not None else []
     horizontal_lines = _detect_horizontal_lines(
         img,
+        items,
         content_width=content_width,
         content_y0=content_y0,
         content_y1=content_y1,
@@ -1136,8 +1153,8 @@ def reconstruct_table_by_header(
         min_h=min_h,
     ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
-    # showLines(img,vertical_lines,'v')
-    # showLines(img,horizontal_lines,'h')
+    showLines(img,vertical_lines,'v')
+    showLines(img,horizontal_lines,'h')
 
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
@@ -1672,7 +1689,7 @@ if __name__ == "__main__":
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\7.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\12.jpg'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0002.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\1.jpg'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
