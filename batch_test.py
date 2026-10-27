@@ -5,7 +5,6 @@
     python batch_test.py docx                # 扫描 skpFilePath 下全部 docx
     python batch_test.py pdf --no-upload     # 调试模式,跳过 GoFast 上传
     python batch_test.py xlsx 2022年重点项目 # 仅扫描 skpFilePath 下的子目录
-    python batch_test.py docx
     python batch_test.py xlsx --dbkey db220 --upload   # 扫描xlsx，上传db220
 """
 

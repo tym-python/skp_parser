@@ -869,6 +869,8 @@ class BaseParser(ABC):
             if re.fullmatch(r'[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?'
     r'(?:[\s\d]*[\u4e00-\u9fff]{1,5}(?:省|市|自治区)(?:20\d{2}年)?)*',name):
                 continue
+            if re.fullmatch(r'(\d{4})年(?:度)?[^。！？；\n]*?项目\s*(\d+)\s*(?:个|项)',name):
+                continue
             if re.search(r'网盘更新|扫码咨询|免费订阅|主管部门：',name):
                 continue
             # 全数字/占位符清洗:项目名全数字或全破折号("——")→ 整条过滤;字段同型 → 置空
