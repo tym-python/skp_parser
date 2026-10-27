@@ -907,7 +907,7 @@ class BaseParser(ABC):
             return (BaseParser._looks_like_category(m.group(1))
                     or re.search(r'\d+\s*(?:个|项|件)\s*$', m.group(1)))
         return bool(
-            re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+、', name)
+            re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[、\s]', name)
             or re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个)?[)）]', name)
             # "——" 子分类行(如 "——铁路"),路由到 update_category_context 处理
             or re.match(r'^[—－-]{2,}\s*\S', name)
@@ -1301,7 +1301,7 @@ class BaseParser(ABC):
         pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 9:
+            if line_idx == 8:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1553,7 +1553,7 @@ class BaseParser(ABC):
                 nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
                 if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
                     del cells[name_col]
-            if row_i == 21-1:
+            if row_i == 8-1:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue
