@@ -483,7 +483,7 @@ def _detect_horizontal_lines(
         lines = filtered_lines
 
     # ---------- 6) 穿透文字过滤 ----------
-    lines = _filter_cross_lines(lines, items)
+    lines = _filter_cross_lines(lines, items, img, avg_h)
 
     # ---------- 7) 分布有效性校验 ----------
     if content_y0 is not None and content_y1 is not None:
@@ -587,30 +587,73 @@ def _detect_vertical_lines(
 
 
 # ------------------------------------------------------------
-# 5.6 过滤穿过文字实体的伪横线
-# ------------------------------------------------------------
-def _filter_cross_lines(horizontal_lines: List[float], items: List[Dict]) -> List[float]:
-    """过滤掉穿透文字实体的伪横线（如多行表头内部被误识别的线）。
-
-    容差 margin 取 30% 字高，防止抗锯齿边缘擦边被误判。
-    """
+def _filter_cross_lines(horizontal_lines: List[float], items: List[Dict], img: np.ndarray, avg_h: float) -> List[float]:
+    """过滤伪横线。若发现表格倾斜，则豁免穿透过滤。"""
     if not horizontal_lines or not items:
         return horizontal_lines
+    # ★ 核心：如果是倾斜图片，直接跳过基于 OCR 坐标的穿透过滤
+    # if _check_table_tilted(img):
+    #     print('倾斜')
+    #     return horizontal_lines
 
+    # 1. 获取当前图像横线的倾斜高度差（像素）
+    tilt_y_diff = _get_table_tilt_ydiff(img)
+
+    # 2. 设定倾斜阈值：如果高度差 > 2 像素，认定为倾斜
+    # （2000像素宽的表，哪怕倾斜0.1度，高度差也有3.5px，足以切过文字）
+    if tilt_y_diff > avg_h * 0.25:
+        print(f'[防误杀] 检测到横线高度差 {tilt_y_diff:.1f}px，大于平均高度的25%，{avg_h * 0.25}，跳过穿透过滤')
+        return horizontal_lines
+    # 3. 如果判定为水平图，执行原有的穿透过滤
     valid_lines: List[float] = []
     for line_y in horizontal_lines:
         # 使用生成器表达式配合 any，一旦命中立即返回 True，避免多余遍历
         is_fake_line = any(
-            (it['y0'] + it['h'] * 0.3) < line_y < (it['y1'] - it['h'] * 0.3)
+            (it['y0'] + it['h'] * 0.27) < line_y < (it['y1'] - it['h'] * 0.27)
             for it in items
         )
 
         if not is_fake_line:
             valid_lines.append(line_y)
-        # else:
-        #     print(f'[跳过] y={line_y:.1f} 穿透文字实体')
+        else:
+            print(f'[跳过] y={line_y:.1f} 穿透文字实体')
 
     return valid_lines
+
+# ------------------------------------------------------------
+# 5.6 判断表格是否倾斜，计算图像中横线的实际倾斜高度差（像素）
+# ------------------------------------------------------------
+def _get_table_tilt_ydiff(img: np.ndarray) -> float:
+    """计算图像中横线的倾斜高度差。"""
+    if img is None or img.size == 0:
+        return 0.0
+
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 1))
+    horizontal = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
+
+    contours, _ = cv2.findContours(horizontal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    ydiffs = []
+    for c in contours:
+        if cv2.contourArea(c) < 100:
+            continue
+        x, y, w, h = cv2.boundingRect(c)
+        if w > h * 5 and w > img.shape[1] * 0.1:
+            vx, vy, cx, cy = cv2.fitLine(c, cv2.DIST_L2, 0, 0.01, 0.01)
+            angle = math.degrees(math.atan2(vy.item(), vx.item()))
+            if angle > 90: angle -= 180
+            if angle < -90: angle += 180
+
+            # 高度差 = 宽度 * tan(角度)
+            y_diff = abs(w * math.tan(math.radians(angle)))
+            ydiffs.append(y_diff)
+
+    if not ydiffs:
+        return 0.0
+    return float(np.median(ydiffs))
 
 # ------------------------------------------------------------
 # 6. 按横线硬边界切分单元格
@@ -1153,8 +1196,8 @@ def reconstruct_table_by_header(
         min_h=min_h,
     ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
-    showLines(img,vertical_lines,'v')
-    showLines(img,horizontal_lines,'h')
+    # showLines(img,vertical_lines,'v')
+    # showLines(img,horizontal_lines,'h')
 
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
@@ -1689,12 +1732,20 @@ if __name__ == "__main__":
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\7.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\7.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\12.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\图片\2026年省级重点项目清单（截止2026.3.3）.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\14.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png'
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\14贵州省2023年重点项目清单\2023年黔东南州\1.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0001.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\水印图片\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_50.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\27山西省2025年重点项目清单\32.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\19湖北省2025年重点项目清单\十堰市2025年\十堰市2025年省级重点项目清单.png'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
-        # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
-        # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png
-        # '''
+        # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
+        # # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png
+        # # '''
         # for file in t.split('\n'):
         #     if not file:
         #         continue
