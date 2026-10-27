@@ -1196,8 +1196,8 @@ def reconstruct_table_by_header(
         min_h=min_h,
     ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
-    # showLines(img,vertical_lines,'v')
-    # showLines(img,horizontal_lines,'h')
+    showLines(img,vertical_lines,'v')
+    showLines(img,horizontal_lines,'h')
 
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
@@ -1515,10 +1515,11 @@ def _fallback_paragraph(
 ) -> List[str]:
     """无法识别为表格时，按行输出纯文本。
 
-    三种模式：
-      1. 无横竖线 → y 聚类切行，行内按 x 拼接（原逻辑）
-      2. 有横线   → 横线硬边界切行，行内按 x 拼接
-      3. 有竖线   → 行内按列分组，列间 ' | ' 连接
+ 四种模式：
+      1. 有横无竖 → 横线硬边界切行，行内按 x 拼接
+      2. 有竖无横 → 行内按列分组，列间 ' ' 连接
+      3. 有横有竖 → 横线切行 + 竖线切列（表头失败时的极佳兜底）
+      4. 无横无竖 → y 聚类切行，行内按 x 拼接
 
     参数：
         items:            OCR items
@@ -1571,7 +1572,28 @@ def _fallback_paragraph(
 
         return _fallback_render_with_columns(rows, col_defs)
 
-    # ---------- 模式 C：都无 ----------
+    # ---------- 模式 C：有横有竖（★ 新增） ----------
+    if has_h and has_v:
+        # 1. 利用竖线构建纯物理列（不依赖表头回填）
+        col_defs = _build_columns_from_vertical_lines(
+            vertical_lines,
+            img_width=10 ** 9,
+            header_items=None,
+            avg_h=avg_h,
+        )
+
+        if not col_defs or len(col_defs) < 2:
+            # 竖线构建失败，退化为模式 A（按横线切行输出纯文本）
+            rows = _fallback_split_by_hlines(items, horizontal_lines)
+            return _fallback_render_plain(rows)
+
+        # 2. 利用横线构建完美的行切分
+        rows = _fallback_split_by_hlines(items, horizontal_lines)
+
+        # 3. 按列对齐渲染
+        return _fallback_render_with_columns(rows, col_defs)
+
+    # ---------- 模式 D：都无 ----------
     return _fallback_render_plain(_fallback_group_by_y(items, avg_h))
 
 
@@ -1741,6 +1763,7 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\27山西省2025年重点项目清单\32.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\19湖北省2025年重点项目清单\十堰市2025年\十堰市2025年省级重点项目清单.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\仙桃市2024年\2024年仙桃市省级重点项目清单2.png.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
