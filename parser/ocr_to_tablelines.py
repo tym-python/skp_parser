@@ -394,7 +394,7 @@ def _detect_horizontal_lines(
         items: List[Dict],
         min_total_ratio: float = 0.3,  # 从 0.5 降到 0.3（现在是下限约束）
         min_px: int = 30,
-        threshold_val: int = 180,
+        threshold_val: int = 200,
         content_width: float = None,  # 表格内容宽度（原图坐标）
         content_y0: float = None,  # 内容区上边界（原图坐标）
         content_y1: float = None,  # 内容区下边界（原图坐标）
@@ -615,8 +615,8 @@ def _filter_cross_lines(horizontal_lines: List[float], items: List[Dict], img: n
 
         if not is_fake_line:
             valid_lines.append(line_y)
-        else:
-            print(f'[跳过] y={line_y:.1f} 穿透文字实体')
+        # else:
+        #     print(f'[跳过] y={line_y:.1f} 穿透文字实体')
 
     return valid_lines
 
@@ -706,6 +706,7 @@ def _detect_header_by_lines(
         items: List[Dict],
         horizontal_lines: List[float],
         colnum: int,
+        avg_h:float,
 ) -> Tuple[List[Dict], List[Dict]]:
     """用横线定位表头。
     候选线条件：
@@ -752,9 +753,19 @@ def _detect_header_by_lines(
     if best_bottom is None:
         return [], items
 
-    header_items = [it for it in items
-                    if (it['y0'] + it['y1']) / 2 < best_bottom
-                    and (it.get('text') or '').strip()]
+    # header_items = [it for it in items
+    #                 if (it['y0'] + it['y1']) / 2 < best_bottom
+    #                 and (it.get('text') or '').strip()]
+
+    # 直接限定：只要 yc 在 (best_bottom - 4*avg_h) 到 best_bottom 之间的文字
+    upper_bound = best_bottom - (avg_h * 5.0)
+
+    header_items = [
+        it for it in items
+        if upper_bound <= (it['y0'] + it['y1']) / 2 < best_bottom
+           and (it.get('text') or '').strip()
+    ]
+
     body_items = [it for it in items
                   if (it['y0'] + it['y1']) / 2 >= best_bottom
                   and (it.get('text') or '').strip()]
@@ -1151,6 +1162,7 @@ def mean_of_lowest_pct(values, pct=0.2):
 def reconstruct_table_by_header(
         items: List[Dict],
         img: np.ndarray = None,
+        isshowLines = False,
 ) -> Tuple[Any, str]:
     """按表头定列重建表格。
 
@@ -1196,8 +1208,9 @@ def reconstruct_table_by_header(
         min_h=min_h,
     ) if img is not None else []
     # print(f'检测到 {len(horizontal_lines)} 条横线, {len(vertical_lines)} 条竖线')
-    showLines(img,vertical_lines,'v')
-    showLines(img,horizontal_lines,'h')
+    if isshowLines:
+        showLines(img,vertical_lines,'v')
+        showLines(img,horizontal_lines,'h')
 
     # ------------------------------------------------------------
     # 步骤 2：表格线不足 → 降级段落
@@ -1218,7 +1231,7 @@ def reconstruct_table_by_header(
     # 步骤 3：横线定表头
     # ------------------------------------------------------------
     header_items, body_items = _detect_header_by_lines(
-        items, horizontal_lines, len(vertical_lines) - 1,
+        items, horizontal_lines, len(vertical_lines) - 1, avg_h
     )
     if not header_items or not body_items:
         # print('表格线定表头失败，降级为段落模式')
@@ -1508,6 +1521,88 @@ def _find_anchor_by_keywords(
     return best_idx
 
 
+def _split_merged_rows_by_seq(
+        rows: List[List[Dict]],
+        avg_h: float,
+        col_defs: Optional[List[Dict]] = None
+) -> List[List[Dict]]:
+    """利用序号列，将因为横线漏检而被合并在一起的多行进行二次切分。
+
+    :param rows: 按横线切分出的初始行集合
+    :param avg_h: 平均字高
+    :param col_defs: 如果有竖线，传入列定义用于精准定位；如果没有竖线（模式A），传None走启发式定位。
+    """
+    import re
+    seq_pattern = re.compile(r'^\d+(?:\s.*)?$')
+    seq_col_idx = -1
+    new_rows = []
+
+    # 1. 如果有竖线，精准定位序号列（前两列中纯数字占比 > 75%）
+    if col_defs:
+        max_seq_count = 0
+
+        # 更稳妥的写法：从全部 rows 的扁平化 items 中找
+        all_items = [it for row in rows for it in row]
+        for i in range(min(2, len(col_defs))):
+            col_items = [it for it in all_items if _assign_column(it['xc'], col_defs) == i]
+            if not col_items: continue
+            count = sum(1 for it in col_items if seq_pattern.match(it['text'].strip()))
+            if count > max_seq_count and count / len(col_items) > 0.75:
+                max_seq_count = count
+                seq_col_idx = i
+
+    # 2. 遍历每一行，进行二次切分
+    for row in rows:
+        if not row:
+            continue
+
+        seq_items = []
+        if col_defs and seq_col_idx != -1:
+            # 策略 C：精确按列提取
+            seq_items = [
+                it for it in row
+                if _assign_column(it['xc'], col_defs) == seq_col_idx and seq_pattern.match(it['text'].strip())
+            ]
+        else:
+            # 策略 A：启发式提取（无竖线时）
+            # 条件：纯数字，且在最左侧 15% 的宽度范围内
+            row_min_x = min(it['x0'] for it in row)
+            row_max_x = max(it['x1'] for it in row)
+            row_width = row_max_x - row_min_x
+
+            for it in row:
+                if seq_pattern.match(it['text'].strip()):
+                    # 相对位置在左侧 15% 以内
+                    if it['x0'] - row_min_x < max(50, row_width * 0.15):
+                        seq_items.append(it)
+
+            # 如果启发式找出了多个序号，检查它们是否在垂直方向拉得足够开（防止误判同一行里的多个数字）
+            if len(seq_items) > 1:
+                seq_items.sort(key=lambda x: x['yc'])
+                # 过滤掉垂直距离过近的，只保留跨度 > 0.8倍字高的
+                valid_seq_items = [seq_items[0]]
+                for s in seq_items[1:]:
+                    if s['yc'] - valid_seq_items[-1]['yc'] > avg_h * 0.8:
+                        valid_seq_items.append(s)
+                seq_items = valid_seq_items
+
+        # 3. 根据序号锚点进行强制分配
+        if len(seq_items) > 1:
+            seq_items.sort(key=lambda x: x['yc'])
+            sub_rows = {id(s): [] for s in seq_items}
+            for it in row:
+                # 将每个 item 分配给距离最近的序号锚点
+                closest_seq = min(seq_items, key=lambda s: abs(it['yc'] - s['yc']))
+                sub_rows[id(closest_seq)].append(it)
+
+            for seq in seq_items:
+                new_rows.append(sub_rows[id(seq)])
+        else:
+            # 没有序号，或者序号 <= 1 个，说明没有合并，原样保留
+            new_rows.append(row)
+
+    return new_rows
+
 def _fallback_paragraph(
         items: List[Dict],
         horizontal_lines: Optional[List[float]] = None,
@@ -1541,6 +1636,8 @@ def _fallback_paragraph(
     # ---------- 模式 A：有横线无竖线 ----------
     if has_h and not has_v:
         rows = _fallback_split_by_hlines(items, horizontal_lines)
+        # ★ 尝试用序号进行二次切分
+        rows = _split_merged_rows_by_seq(rows, avg_h, col_defs=None)
         return _fallback_render_plain(rows)
 
     # ---------- 模式 B：有竖线无横线 ----------
@@ -1572,25 +1669,25 @@ def _fallback_paragraph(
 
         return _fallback_render_with_columns(rows, col_defs)
 
-    # ---------- 模式 C：有横有竖（★ 新增） ----------
+    # ---------- 模式 C：有横有竖 ----------
     if has_h and has_v:
         # 1. 利用竖线构建纯物理列（不依赖表头回填）
         col_defs = _build_columns_from_vertical_lines(
-            vertical_lines,
-            img_width=10 ** 9,
-            header_items=None,
-            avg_h=avg_h,
+            vertical_lines, img_width=10 ** 9, header_items=None, avg_h=avg_h,
         )
-
         if not col_defs or len(col_defs) < 2:
             # 竖线构建失败，退化为模式 A（按横线切行输出纯文本）
             rows = _fallback_split_by_hlines(items, horizontal_lines)
+            rows = _split_merged_rows_by_seq(rows, avg_h, col_defs=None)
             return _fallback_render_plain(rows)
 
         # 2. 利用横线构建完美的行切分
         rows = _fallback_split_by_hlines(items, horizontal_lines)
 
-        # 3. 按列对齐渲染
+        # 3. ★ 尝试用序号进行二次切分
+        rows = _split_merged_rows_by_seq(rows, avg_h, col_defs)
+
+        # 4. 按列对齐渲染
         return _fallback_render_with_columns(rows, col_defs)
 
     # ---------- 模式 D：都无 ----------
@@ -1600,7 +1697,7 @@ def _fallback_paragraph(
 # ------------------------------------------------------------
 # 15. 统一入口
 # ------------------------------------------------------------
-def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
+def ocr_image_bytes(data: bytes, isshowLines:bool=False) -> Tuple[Any, Optional[str]]:
     """图片字节 → (result, mode)。
 
     返回：
@@ -1626,7 +1723,7 @@ def ocr_image_bytes(data: bytes) -> Tuple[Any, Optional[str]]:
             print(f'OCR 结果疑似乱码（items={len(items)}, 乱码分={score:.2f}），跳过解析')
             return [], None
 
-        res_list, parse_type = reconstruct_table_by_header(items, img=img)
+        res_list, parse_type = reconstruct_table_by_header(items, img=img, isshowLines=isshowLines)
 
         return res_list, parse_type
 
@@ -1746,6 +1843,7 @@ if __name__ == "__main__":
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4.jpg"
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2022年重点项目\06内蒙古自治区2022年重点项目清单\4.jpg"
         full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\29四川省2025年重点项目清单\广元市2025年\2025年广元市加快前期工作重大项日名单4.jpg"
+        full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\2.jpg"
         # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\水印图片\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png"
         # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\荣昌区2025年\荣昌区2025年重点建设项目计划表13.jpg"
         # full_path = r"E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0024.jpg"
@@ -1764,6 +1862,10 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\19湖北省2025年重点项目清单\十堰市2025年\十堰市2025年省级重点项目清单.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\仙桃市2024年\2024年仙桃市省级重点项目清单2.png.png'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南3.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州9.jpg'  # 图片上方干扰信息
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0023.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\26山东省2024年重点项目清单\泰安市2024年\2.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
@@ -1776,7 +1878,7 @@ if __name__ == "__main__":
         with open(full_path, 'rb') as f:
             data = f.read()
 
-        lines, _ = ocr_image_bytes(data)
+        lines, _ = ocr_image_bytes(data,isshowLines=True)
         for ln in lines:
             print(ln)
         print('=' * 30, len(lines))
