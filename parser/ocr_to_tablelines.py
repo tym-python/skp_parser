@@ -394,7 +394,7 @@ def _detect_horizontal_lines(
         items: List[Dict],
         min_total_ratio: float = 0.3,  # 从 0.5 降到 0.3（现在是下限约束）
         min_px: int = 30,
-        threshold_val: int = 200,
+        threshold_val: int = 180,
         content_width: float = None,  # 表格内容宽度（原图坐标）
         content_y0: float = None,  # 内容区上边界（原图坐标）
         content_y1: float = None,  # 内容区下边界（原图坐标）
@@ -602,7 +602,7 @@ def _filter_cross_lines(horizontal_lines: List[float], items: List[Dict], img: n
     # 2. 设定倾斜阈值：如果高度差 > 2 像素，认定为倾斜
     # （2000像素宽的表，哪怕倾斜0.1度，高度差也有3.5px，足以切过文字）
     if tilt_y_diff > avg_h * 0.25:
-        print(f'[防误杀] 检测到横线高度差 {tilt_y_diff:.1f}px，大于平均高度的25%，{avg_h * 0.25}，跳过穿透过滤')
+        # print(f'[防误杀] 检测到横线高度差 {tilt_y_diff:.1f}px，大于平均高度的25%，{avg_h * 0.25:.1f}px，跳过穿透过滤')
         return horizontal_lines
     # 3. 如果判定为水平图，执行原有的穿透过滤
     valid_lines: List[float] = []
@@ -1533,7 +1533,7 @@ def _split_merged_rows_by_seq(
     :param col_defs: 如果有竖线，传入列定义用于精准定位；如果没有竖线（模式A），传None走启发式定位。
     """
     import re
-    seq_pattern = re.compile(r'^\d+(?:\s.*)?$')
+    seq_pattern = re.compile(r'^(?:\d+|[(（][一二三四五六七八九十百千零两]+[)）])(?:\s.*)?$')
     seq_col_idx = -1
     new_rows = []
 
@@ -1863,9 +1863,9 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\19湖北省2025年重点项目清单\十堰市2025年\十堰市2025年省级重点项目清单.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\仙桃市2024年\2024年仙桃市省级重点项目清单2.png.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南3.png'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州9.jpg'  # 图片上方干扰信息
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\11福建省2024年重点项目清单\厦门市2024年\ilovepdf_pages-to-jpg\2024年厦门市重点项目名单（简版）_page-0023.jpg'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\26山东省2024年重点项目清单\泰安市2024年\2.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州14.jpg'  # 图片上方干扰信息
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\10.jpg'
+        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\26山东省2024年重点项目清单\泰安市2024年\2.jpg'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
