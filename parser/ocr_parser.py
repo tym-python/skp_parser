@@ -82,6 +82,6 @@ class ImageOcrParser(BaseParser):
             return []
         context: Dict[str, str] = {}
         if _ == 'lines':
-            return self.filter_blank_projects(self.parse_lines(lines, context))
+            return self.filter_blank_projects(self.parse_lines(lines, context, bare=True,fileType='ocr'))
         elif _ == 'table':
             return self.filter_blank_projects(self.extract_rows_from_table(lines, context)[0])

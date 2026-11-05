@@ -835,7 +835,7 @@ class BaseParser(ABC):
             return False
         # 结尾:清单/名单/目录/总表 + 可选括号类别后缀("（预备项目）"/"（B类）")
         return bool(re.search(
-            r'(?:清单|名单|目录|总表|汇总|报表|计划表)\s*(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
+            r'(?:清单|名单|目录|总表|汇总|报表|计划表|项目表|一览表|情况表|项目计划){0,6}(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
 
     @staticmethod
     def filter_blank_projects(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -901,7 +901,7 @@ class BaseParser(ABC):
         括号序号标题(如 "(1)高速公路项目"、"（一）电子信息")要求短标题(≤15 字)
         或含项数,避免 "(3)银川市…光伏发电项目" 这类子序号+完整项目名的数据行误判。
         """
-        m = re.match(r'^[（(]\s*(?:[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+|\d+)\s*[)）]\s*(.+)$', name)
+        m = re.match(r'^[（(]\s*(?:[一二三四五六七八九十—ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+|\d+)\s*[)）]\s*(.+)$', name)
         if m:
             # 分类名单词或数字量词结尾(如 "（一）实验室体系建设项目2个")
             return (BaseParser._looks_like_category(m.group(1))
@@ -943,7 +943,7 @@ class BaseParser(ABC):
                 # 无"项/个"的括号数字仅认行首(避免数据行内容如 "小（1）型水库" 误触发)
                 or re.match(r'^[（(]\s*\d+\s*[)）]', text)
                 or re.match(r'^[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ①②③④⑤⑥⑦⑧⑨⑩]+[、.．\s]', text)
-                or re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]', text)
+                or re.match(r'^[（(][一二三四五六七八九十—ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]', text)
                 # -1 分类
                 or re.match(r'^-\d+\s+', text)
                 or re.match(r'^[（(]\s*\d+\s*[)）]', text)
@@ -993,7 +993,7 @@ class BaseParser(ABC):
             BaseParser._record_declared(text, context)
             return True
 
-        m2 = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', text)
+        m2 = re.match(r'^[（(][一二三四五六七八九十—ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', text)
         if m2:
             sub_raw = m2.group(1)
             # 概况说明文字(如 "市住建委 项目14个，2025年计划完成4.36亿元")→ 跳过不设分类
@@ -1281,7 +1281,7 @@ class BaseParser(ABC):
         return any(c is not None and str(c).strip() for c in cells)
 
     def parse_lines(self, lines: List[str], context: Optional[Dict[str, str]] = None,
-                    bare: bool = False) -> List[Dict[str, Any]]:
+                    bare: bool = False, fileType: str = '') -> List[Dict[str, Any]]:
         """行级兜底解析:从纯文本行中抽取项目信息。
 
         规则:
@@ -1301,7 +1301,7 @@ class BaseParser(ABC):
         pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 8:
+            if line_idx == 2:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1358,7 +1358,7 @@ class BaseParser(ABC):
             if re.match(r'^\d{1,3}$', text):
                 pending = True
                 continue
-            m = re.match(r'^^[（(]?\s*(\d+)\s*[)）]?\s*[、.．]?\s*(.*)$', text)
+            m = re.match(r'^[（(]?\s*(\d+)\s*[)）]?\s*[、.．]?\s*(.*)$', text)
             if m:
                 name = m.group(2).strip()
                 if not name:
@@ -1380,13 +1380,13 @@ class BaseParser(ABC):
                     # 多列合并整行("序号 项目名 单位 地点 内容")时,项目名取第一个空格前
                     if name.count(' ') >= 2:
                         name = name.split(' ', 1)[0]
-                    project = self._new_project(name, text, context)
+                    project = self._new_project(name, text, context, fileType)
                     project['source_row'] = line_idx  # 文本行号(1-based)
                     projects.append(project)
                     pending = False
                 continue
             if pending:
-                project = self._new_project(text, text, context)
+                project = self._new_project(text, text, contextt, fileType)
                 project['source_row'] = line_idx  # 文本行号(1-based)
                 projects.append(project)
                 pending = False
@@ -1407,16 +1407,31 @@ class BaseParser(ABC):
                     if (entry.startswith('   ') or BaseParser._filter_seconde_name(entry)) and projects and projects[-1].get('project_name','') and projects[-1]['project_name'] in clean_text(lines[max(0, line_idx-2)]):
                         pass  # 走后面的续行
                     else:
-                        project = self._new_project(text, text, context)
+                        project = self._new_project(text, text, context, fileType)
                         project['source_row'] = line_idx  # 文本行号(1-based)
                         projects.append(project)
+                        continue
+                elif fileType == 'ocr':
+                    if text.count(' ') >= 2:
+                        name = text.split(' ', 1)[0]
+                    else:
+                        name = text
+                    if not pending and 2 <= len(name) <= 60 \
+                        and not re.search(r'[。！？!?；;]$', name) \
+                        and not re.search(r'[,，。:：]', name) \
+                        and not name.endswith(('名单', '清单', '汇总', '目录', '通知')) \
+                        and not name.isdigit():
+                        project = self._new_project(name, text, context, fileType)
+                        project['source_row'] = line_idx  # 文本行号(1-based)
+                        projects.append(project)
+                        pending = False
                         continue
                 else:
                     continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
             if projects:
                 if re.findall('项目|项日|项曰|页目|顶日|顶目',projects[-1]['project_name'],re.DOTALL):
-                    project = self._new_project(text, text, context)
+                    project = self._new_project(text, text, context, fileType)
                     project['source_row'] = line_idx  # 文本行号(1-based)
                     projects.append(project)
                     continue
@@ -1436,13 +1451,13 @@ class BaseParser(ABC):
 
     @staticmethod
     def _new_project(name: str, full_line: str,
-                     context: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+                     context: Optional[Dict[str, str]] = None, fileType:str= '') -> Dict[str, Any]:
         """从行文本构造项目 dict(去标点、抽投资与年份,附带分类上下文)。"""
         project: Dict[str, Any] = {
             'project_name': name.rstrip('。，,、;；').strip()[:255],
         }
         if context:
-            project['category'] = context.get('category', '')
+            project['category'] = context.get('category', '') if fileType != 'ocr' else context.get('category', '').split('-')[-1]
             project['project_type'] = context.get('project_type', '')
         investment = clean_amount(full_line, require_unit=True, textType='line')
         if investment:
@@ -1553,7 +1568,7 @@ class BaseParser(ABC):
                 nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
                 if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
                     del cells[name_col]
-            if row_i == 8-1:
+            if row_i == 2:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue

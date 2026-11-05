@@ -77,7 +77,7 @@ def parse_items(result) -> List[Dict[str, Any]]:
         # 文本清洗：页码 / 页脚 / 水印
         text = re.sub(r'第?\s*\d+\s*页\s*[，,、/]?\s*共\s*\d+\s*页', ' ', text).strip()
         text = re.sub(r'^\s*[一\-—–－]\s*\d+\s*[一\-—–－]\s*$', ' ', text).strip()
-        watermark = re.fullmatch(r'©?基建通|建通|©基建', text)
+        watermark = re.fullmatch(r'©?基建通|建通|©基建|基建', text)
         if not text:
             continue
         if watermark:
@@ -1563,7 +1563,7 @@ def _split_merged_rows_by_seq(
                 it for it in row
                 if _assign_column(it['xc'], col_defs) == seq_col_idx and seq_pattern.match(it['text'].strip())
             ]
-        else:
+        elif not col_defs:
             # 策略 A：启发式提取（无竖线时）
             # 条件：纯数字，且在最左侧 15% 的宽度范围内
             row_min_x = min(it['x0'] for it in row)
@@ -1865,7 +1865,12 @@ if __name__ == "__main__":
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南3.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\31浙江省2023年重点项目清单\2023年杨州市\扬州14.jpg'  # 图片上方干扰信息
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\04重庆市2023年重点项目清单\2023年开州区\10.jpg'
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\26山东省2024年重点项目清单\泰安市2024年\2.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\19湖北省2024年重点项目清单\仙桃市2024年\2024年仙桃市省级重点项目清单2.png.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\20湖南省2023年重点项目清单\湖南6.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\01北京市2023年重点项目清单\北京市2023年重点工程计划\北京市2023年重点工程计划_8.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\11福建省2023年重点项目清单\2023年福州市\2023年度市级重点项目名录.xlsx'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
