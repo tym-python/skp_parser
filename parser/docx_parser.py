@@ -143,7 +143,7 @@ class DocxParser(BaseParser):
         paragraph_lines: List[str] = []
         last_paras: List[str] = []  # 最近段落环形缓冲(卡片表缺项目名时回溯,见 _profile_name_from_paras)
         has_table = False
-        project_list_title = False
+        project_list_title = False  # 表格前 清单标题
         profile_count = 0  # 单项目纵排卡片表计数(汇总日志用)
 
         for kind, payload in iter_blocks(file_path, with_grid=True):
@@ -207,7 +207,7 @@ class DocxParser(BaseParser):
             # 无表格:先纯文本清单兜底(bare:段落式逐行项目条目,如 甘肃 名单
             # "续建项目：…（一）农业水利项目 → 项目名" 逐行)
             if paragraph_lines:
-                projects.extend(self.parse_lines(paragraph_lines, context, bare=True))
+                projects.extend(self.parse_lines(paragraph_lines, context, bare=True, fileType='docx'))
             # 段落路径 0 条(纯图片清单 docx,正文仅引言/概况段,项目为截图,
             # 如 天津西青/临港/松江/湖南 2023)→ 按 body 顺序逐图 OCR 行级兜底,
             # 与单独图片文件共用 ocr_parser 逻辑;有产出的常规 docx 不触发
@@ -216,7 +216,7 @@ class DocxParser(BaseParser):
                 for img in docx_image_blocks(file_path):
                     ocr_lines,_ = ocr_image_bytes(img)
                     if ocr_lines and _ == 'lines':
-                        projects.extend(self.parse_lines(ocr_lines, context))
+                        projects.extend(self.parse_lines(ocr_lines, context, fileType='docx-ocr'))
                     elif ocr_lines and _ == 'table':
                         projects.extend(self.extract_rows_from_table(ocr_lines, context)[0])
                 if projects:

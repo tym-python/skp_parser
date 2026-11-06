@@ -46,7 +46,7 @@ PROJECT_TYPE_WORDS = (
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
-CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)')
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)','设项目')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
 from parser.ocr_to_tablelines import TITLE_KEYWORDS
@@ -170,7 +170,7 @@ class BaseParser(ABC):
     # 无表头清单表:数据行首列序号形态(纯数字,容忍 "（1）"/"1、"/"1." 等包裹)
     POSITIONAL_SEQ_RE = re.compile(r'^[（(]?\s*\d+\s*[)）]?[、.．]?\s*$')
     # 无表头清单表:表名行特征(含 项目/工程 + 清单类词,如 "2022年市级重点项目名单（建设类）")
-    POSITIONAL_TITLE_RE = re.compile(r'(?:项目|工程)[^（()）\n]{0,16}?(?:名单|清单|列表|目录|总表)')
+    POSITIONAL_TITLE_RE = re.compile(r'(?:项目|工程)[^（()）\n]{0,16}?(?:名单|清单|列表|目录|总表|计划)')
 
     @staticmethod
     def _positional_header(rows: List[List[Any]],project_list_title:bool=False) -> Optional[Tuple[Dict[int, str], int]]:
@@ -366,6 +366,23 @@ class BaseParser(ABC):
         return bool(NOTE_LABEL_RE.match(re.sub(r'\s+', ' ', str(text).strip())))
 
     @staticmethod
+    def is_long_body(text: str, fileType: str = '') -> bool:
+        '''
+        文件通知正文内容，针对parse_lines，
+        :param text:
+        :param fileType:
+        :return:
+        '''
+        s = text.strip()
+        if len(s) < 50 and 'ocr' in fileType:
+            return False
+        punctuation = s.count('，') + s.count('。') + s.count('；')
+        density = punctuation / len(s)
+        has_verb_phrase = any(
+            k in s for k in ('审议', '认为', '通过', '表示', '指出', '涵盖', '同意', '政策性', '领导干部'))
+        return density > 0.03 or (len(s) > 80 and has_verb_phrase) or (punctuation and has_verb_phrase)
+
+    @staticmethod
     def _unwrap_cat_bracket(text: str) -> str:
         """分类行前缀归一:去掉 【】 强调包装(与无括号等价)——贵阳 2026
         "【预备】(1个)" 等同 "预备(1个)";"【一、交通】" 等同 "一、交通"。
@@ -551,7 +568,7 @@ class BaseParser(ABC):
                 return ''
             name = str(cells[name_col] or '').strip()
             m = re.match(
-                rf'^({PT}|计划新开工|竣工投产或部分竣工投产)项目?$', name)
+                rf'^({PT}|计划新开工|竣工投产或部分竣工投产)项目?$', BaseParser._unwrap_cat_bracket(name))
             if not m:
                 return ''
             word = m.group(1)
@@ -835,7 +852,7 @@ class BaseParser(ABC):
             return False
         # 结尾:清单/名单/目录/总表 + 可选括号类别后缀("（预备项目）"/"（B类）")
         return bool(re.search(
-            r'(?:清单|名单|目录|总表|汇总|报表|计划表|项目表|一览表|情况表|项目计划){0,6}(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
+            r'(?:清单|名单|目录|总表|汇总|报表|计划表|项目表|一览表|情况表|项目计划).{0,6}(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
 
     @staticmethod
     def filter_blank_projects(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -851,8 +868,8 @@ class BaseParser(ABC):
             name = p.get('project_name', '')
             if not re.findall('[\u4e00-\u9fa5]+',name,re.DOTALL):
                 continue
-            if name.endswith(('中心','委员会出品')):
-                pass
+            if name.endswith(('投资项目计划安排','重点领域安排')):  # '中心','委员会出品',
+                continue
             if name.replace(' ', '').startswith(('合计', '总计', '小计','共计')):
                 continue
             if re.fullmatch(r'项目数\s*[\d,，.．]*\s*(?:个|项|件)?', name):
@@ -1283,7 +1300,9 @@ class BaseParser(ABC):
     def parse_lines(self, lines: List[str], context: Optional[Dict[str, str]] = None,
                     bare: bool = False, fileType: str = '') -> List[Dict[str, Any]]:
         """行级兜底解析:从纯文本行中抽取项目信息。
-
+        fileType : ocr,docx-ocr,docx
+        分类不接二级分类：ocr
+        正文非项目判断：ocr、docx-ocr，取消长度限制
         规则:
         - 数字序号开头(序号后可为空格/顿号/点号) → 新项目
         - 序号独占一行 → 下一行作为项目名
@@ -1336,7 +1355,7 @@ class BaseParser(ABC):
             # docx 段落式清单常见,如 甘肃 "续建项目：")→ 更新 project_type 上下文
             m_grp = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
                      rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
-                     rf'\s*$', text)
+                     rf'\s*$', BaseParser._unwrap_cat_bracket(text))
             if m_grp:
                 context['project_type'] = m_grp.group('pt')
                 if bare:
@@ -1345,6 +1364,8 @@ class BaseParser(ABC):
                 continue
             # group分组独立行
             if BaseParser.is_group_row_minimal([text]):
+                continue
+            if BaseParser.is_long_body(text,fileType): # 非项目文本内容
                 continue
             if self.is_category_name(text) and self.apply_category(text, context):
                 # bare 模式仅接受 分类词尾 的分区标题作为启动信号
@@ -1386,7 +1407,7 @@ class BaseParser(ABC):
                     pending = False
                 continue
             if pending:
-                project = self._new_project(text, text, contextt, fileType)
+                project = self._new_project(text, text, context, fileType)
                 project['source_row'] = line_idx  # 文本行号(1-based)
                 projects.append(project)
                 pending = False
@@ -1411,21 +1432,21 @@ class BaseParser(ABC):
                         project['source_row'] = line_idx  # 文本行号(1-based)
                         projects.append(project)
                         continue
-                elif fileType == 'ocr':
-                    if text.count(' ') >= 2:
-                        name = text.split(' ', 1)[0]
-                    else:
-                        name = text
-                    if not pending and 2 <= len(name) <= 60 \
-                        and not re.search(r'[。！？!?；;]$', name) \
-                        and not re.search(r'[,，。:：]', name) \
-                        and not name.endswith(('名单', '清单', '汇总', '目录', '通知')) \
-                        and not name.isdigit():
-                        project = self._new_project(name, text, context, fileType)
-                        project['source_row'] = line_idx  # 文本行号(1-based)
-                        projects.append(project)
-                        pending = False
-                        continue
+                # elif fileType == 'ocr':
+                #     if text.count(' ') >= 2:
+                #         name = text.split(' ', 1)[0]
+                #     else:
+                #         name = text
+                #     if not pending and 2 <= len(name) <= 60 \
+                #         and not re.search(r'[。！？!?；;]$', name) \
+                #         and not re.search(r'[,，。:：]', name) \
+                #         and not name.endswith(('名单', '清单', '汇总', '目录', '通知')) \
+                #         and not name.isdigit():
+                #         project = self._new_project(name, text, context, fileType)
+                #         project['source_row'] = line_idx  # 文本行号(1-based)
+                #         projects.append(project)
+                #         pending = False
+                #         continue
                 else:
                     continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
