@@ -47,6 +47,8 @@ UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
 # 线检测的目标宽度：超过此宽度才降采样，小于等于则原样
 _MAX_DETECT_WIDTH = 1600
 
+# 匹配纯数字，或类似（一）、（二）的序号
+_SEQ_RE = re.compile(r'^(?:\d+|[(（][一二三四五六七八九十百千零两]+[)）])(?:\s.*)?$')
 
 # ------------------------------------------------------------
 # 0. 引擎：延迟初始化 RapidOCR
@@ -1274,13 +1276,52 @@ def reconstruct_table_by_header(
         col_items_list[_assign_column(it['xc'], col_defs)].append(it)
 
     # ------------------------------------------------------------
-    # 步骤 7：横线硬边界切分单元格
+    # 步骤 6.5：利用序号列，补充漏检的虚拟横线 (NEW)
     # ------------------------------------------------------------
-    body_y1 = max(it['y1'] for it in body_items)
     boundaries = list(horizontal_lines)
+    body_y1 = max(it['y1'] for it in body_items)
     if boundaries[-1] < body_y1:
         boundaries.append(body_y1)  # 补下边界，确保覆盖所有数据行
 
+    # 在前两列中寻找纯数字占比 > 75% 的序号列
+    seq_col_idx = -1
+    max_seq_count = 0
+    for i in range(min(2, len(col_defs))):
+        col_items = col_items_list[i]
+        if not col_items: continue
+        count = sum(1 for it in col_items if _SEQ_RE.match(it['text'].strip()))
+        if count > max_seq_count and count / len(col_items) > 0.75:
+            max_seq_count = count
+            seq_col_idx = i
+
+    # 如果找到了序号列，计算其真实行高，并补充漏检的横线
+    if seq_col_idx != -1:
+        seq_col_items = col_items_list[seq_col_idx]
+        # 用现有的 boundaries 对序号列做一次“试切分”
+        test_cells = _split_by_hard_boundaries(seq_col_items, boundaries)
+
+        virtual_lines = []
+        for cell in test_cells:
+            # 找出当前被合并的 cell 里的纯数字 item
+            cell_seqs = [it for it in cell if _SEQ_RE.match(it['text'].strip())]
+            # 如果里面包含了 >= 2 个序号，说明这里漏线了
+            if len(cell_seqs) > 1:
+                cell_seqs.sort(key=lambda x: x['yc'])
+                # 在相邻的序号中间生成虚拟横线
+                for j in range(1, len(cell_seqs)):
+                    yc1 = cell_seqs[j - 1]['yc']
+                    yc2 = cell_seqs[j]['yc']
+                    virtual_lines.append((yc1 + yc2) / 2.0)
+
+        # 将虚拟线补充进边界，并重新排序
+        if virtual_lines:
+            # print(f"发现序号列漏线，补充了 {len(virtual_lines)} 条虚拟横线")
+            boundaries.extend(virtual_lines)
+            boundaries = sorted(list(set(boundaries)))
+
+    # ------------------------------------------------------------
+    # 步骤 7：横线硬边界切分单元格
+    # ------------------------------------------------------------
     all_cells: List[Dict] = []
     for col_idx, col_items in enumerate(col_items_list):
         for cell in _split_by_hard_boundaries(col_items, boundaries):
@@ -1532,8 +1573,6 @@ def _split_merged_rows_by_seq(
     :param avg_h: 平均字高
     :param col_defs: 如果有竖线，传入列定义用于精准定位；如果没有竖线（模式A），传None走启发式定位。
     """
-    import re
-    seq_pattern = re.compile(r'^(?:\d+|[(（][一二三四五六七八九十百千零两]+[)）])(?:\s.*)?$')
     seq_col_idx = -1
     new_rows = []
 
@@ -1546,7 +1585,7 @@ def _split_merged_rows_by_seq(
         for i in range(min(2, len(col_defs))):
             col_items = [it for it in all_items if _assign_column(it['xc'], col_defs) == i]
             if not col_items: continue
-            count = sum(1 for it in col_items if seq_pattern.match(it['text'].strip()))
+            count = sum(1 for it in col_items if _SEQ_RE.match(it['text'].strip()))
             if count > max_seq_count and count / len(col_items) > 0.75:
                 max_seq_count = count
                 seq_col_idx = i
@@ -1561,7 +1600,7 @@ def _split_merged_rows_by_seq(
             # 策略 C：精确按列提取
             seq_items = [
                 it for it in row
-                if _assign_column(it['xc'], col_defs) == seq_col_idx and seq_pattern.match(it['text'].strip())
+                if _assign_column(it['xc'], col_defs) == seq_col_idx and _SEQ_RE.match(it['text'].strip())
             ]
         elif not col_defs:
             # 策略 A：启发式提取（无竖线时）
@@ -1571,7 +1610,7 @@ def _split_merged_rows_by_seq(
             row_width = row_max_x - row_min_x
 
             for it in row:
-                if seq_pattern.match(it['text'].strip()):
+                if _SEQ_RE.match(it['text'].strip()):
                     # 相对位置在左侧 15% 以内
                     if it['x0'] - row_min_x < max(50, row_width * 0.15):
                         seq_items.append(it)
@@ -1870,7 +1909,8 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\01北京市2023年重点项目清单\北京市2023年重点工程计划\北京市2023年重点工程计划_8.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\11福建省2023年重点项目清单\2023年福州市\2023年度市级重点项目名录.xlsx'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\07宁夏自治区2026年重点项目清单\2026年宁夏自治区重点建设项目清单\2026年宁夏自治区重点建设项目清单_2.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\22江苏省2024年重点项目清单\徐州市2024年\徐州市2024年.13.png'
         # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
