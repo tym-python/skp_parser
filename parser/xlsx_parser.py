@@ -70,7 +70,7 @@ class XlsxParser(BaseParser):
 
     def _parse_sheet(self, file_path: str, sheet: Any) -> List[Dict[str, Any]]:
         """解析单个 sheet:定位表头 → 数据行映射,维护分类上下文。"""
-        header_map, header_idx, header_rows = self._locate_header(sheet)
+        header_map, header_idx, header_rows,valid_len = self._locate_header(sheet)
         # 统计汇总表检测(无项目,如 泸州 "政府投资前期单位汇总"):
         # 表头命中 合计/个数/总数 且不含 项目名称/建设内容 → 不入库,记入 noise 名单
         if self._is_statistics_sheet(header_rows):
@@ -126,7 +126,7 @@ class XlsxParser(BaseParser):
         from parser.field_mapping import build_header_map
         header_map = build_header_map(headers)
         # 普遍数据行非空列数(分组行判定的动态基准)
-        all_rows = [list(r) for r in sheet.iter_rows(values_only=True)]
+        all_rows = [list(r) for r in sheet.iter_rows(max_col=valid_len if valid_len>0 else 50, values_only=True)]
         # 统计普遍有效数据项，1. 不过滤小于最大有效项的数据行，2. 有效项/普遍有效项<0.2，为分类行。（暂定）
         max_project_num = len(all_rows)
         normal_cols = BaseParser._normal_cols(all_rows, header_map)
@@ -198,13 +198,13 @@ class XlsxParser(BaseParser):
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
             cells = list(row)
-            if i == 882-1:
+            if i == 9-1:
                 pass
             # 跳过空行，跳过汇总行
             if not self.is_data_row(cells) or self.skip_summary_row(cells):
                 continue
             # 说明行(如 开州附件2 "下列12个子项目"):不产生项目、不参与分类判断
-            if any(re.match(r'^(下列|详见|见下表|附后)', str(c).strip())
+            if any(re.match(r'^(下列|详见|见下表|附后|备注)', str(c).strip())
                    for c in cells if c is not None and str(c).strip()
                    and not self._is_placeholder(str(c).strip())):
                 continue
@@ -527,11 +527,28 @@ class XlsxParser(BaseParser):
 
     def _locate_header(self, sheet: Any) -> tuple[Optional[Dict[int, str]], int, List[List[Any]]]:
         """读取前 HEADER_SCAN_ROWS 行定位表头行,返回 (列映射, 表头行索引, 扫描到的行)。"""
+        MAX_COL_LIMIT = 50
         header_rows: List[List[Any]] = []
-        for row in sheet.iter_rows(max_row=HEADER_SCAN_ROWS, values_only=True):
+        valid_len = 0
+        # 1. 源头限流：防止读取 1.6w 列
+        for row in sheet.iter_rows(max_row=HEADER_SCAN_ROWS, max_col=MAX_COL_LIMIT, values_only=True):
             header_rows.append(list(row))
+        # 2. 纯 Python 极速截断：从右向左，找最后一个有值的列
+        if header_rows and len(header_rows[0]) > 0:
+            # 利用 zip(*header_rows) 转置，按列生成 Tuple，比按行遍历快得多
+            cols = list(zip(*header_rows))
+            valid_len = len(cols)
+            for i in range(len(cols) - 1, -1, -1):
+                # 只要这一列有任何非空字符串/None，就认为有效
+                if any(v is not None and str(v).strip() != "" for v in cols[i]):
+                    valid_len = i + 1
+                    break
+            # 统一截断
+            if valid_len < len(header_rows[0]):
+                header_rows = [row[:valid_len] for row in header_rows]
+
         header_map, header_idx = self.find_header(header_rows, max_scan=HEADER_SCAN_ROWS)
-        return header_map, header_idx, header_rows
+        return header_map, header_idx, header_rows,valid_len
 
     def _map_cells(self, header_map: Dict[int, str], cells: List[Any],
                    headers: Optional[List[Any]] = None,
@@ -667,7 +684,7 @@ class XlsxParser(BaseParser):
         纯数字、占位符、numCell，不是有效业务数据
         """
         for col, field in header_map.items():
-            if field == 'project_name':
+            if field in ['project_name','sortNum']:
                 continue
             if col >= len(cells):
                 continue
