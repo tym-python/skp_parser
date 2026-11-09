@@ -500,16 +500,17 @@ class XlsxParser(BaseParser):
             cells = list(row)
             first = str(cells[0] or '').strip() if cells else ''
             second = str(cells[1] or '').strip() if len(cells) > 1 else ''
-            if first and not second:
+            if (first and not second) or (not first and second):
                 # 大段说明文本(如 "第四批-.0 河北省 703个 1.5万亿元…")→ 忽略
-                if len(first) > 20:
+                text = first if first else second
+                if len(text) > 20:
                     continue
-                if self.classify_single_row(first, context) or self.apply_category(first, context):
+                if self.classify_single_row(text, context) or self.apply_category(text, context):
                     continue
-                context['category'] = first[:128]
-                continue
-            if not second:
-                continue
+                # context['category'] = text[:128]
+                # continue
+            # if not second:
+            #     continue
             if first:
                 # 纯数字/单字符(如 序号 "1")不是分类,跳过沿用上下文分类
                 if not first.isdigit() and len(first) > 1 \
@@ -518,7 +519,7 @@ class XlsxParser(BaseParser):
                     context['category'] = first[:128]
             projects.append({
                 'project_name': second[:255],
-                'category': context.get('category', ''),
+                'category': context.get('category', '').split('-')[-1],
                 'project_type': context.get('project_type', ''),
                 'source_row': i,  # 1-based 文件行号
             })
