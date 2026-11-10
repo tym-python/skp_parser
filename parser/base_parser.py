@@ -254,7 +254,7 @@ class BaseParser(ABC):
         - 机构名结尾(如 广西责任表 "自治区教育厅|12|金额" 分组行,
           机构名在序号列且 ≤14 字——数据行项目名不单格带机构尾)
         """
-        non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c)]
+        non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c) and not re.fullmatch(r'\d+[个|项]',c)]
         if len(non_empty) != 1:
             return False
         v = non_empty[0]
