@@ -321,6 +321,9 @@ class BaseParser(ABC):
             return False
         if SUMMARY_QTY_RE.search(t) and SUMMARY_CLAUSE_RE.search(t):
             return True
+        # 一句话内包含：
+        if re.search(r'领导[^。！？；!?;\n]*?联系', t):
+            return True
         # 括号内数量枚举式总结(渝北 2025 "项目总数246个（新开工73个、续建73个、
         # 完工62个、重大前期38个）"):以 "N个（" 开头前缀、括号内 ≥2 个顿号分隔的
         # "N个/项" 段且以 右括号 收尾——无 句读/其中/总额词 也判概况句
@@ -861,7 +864,7 @@ class BaseParser(ABC):
             return False
         # 结尾:清单/名单/目录/总表 + 可选括号类别后缀("（预备项目）"/"（B类）")
         return bool(re.search(
-            r'(?:清单|名单|目录|总表|汇总|报表|计划表|项目表|一览表|情况表|项目计划).{0,6}(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
+            r'(?:清单|名单|目录|总表|汇总|报表|计划表|项目表|一览表|情况表|项目计划|重点项目\d+个).{0,6}(?:[（(][^（()）]{0,14}[)）])?\s*$', n))
 
     @staticmethod
     def filter_blank_projects(projects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -897,7 +900,7 @@ class BaseParser(ABC):
                 continue
             if re.fullmatch(r'(\d{4})年(?:度)?[^。！？；\n]*?项目\s*(\d+)\s*(?:个|项)',name):
                 continue
-            if re.search(r'网盘更新|扫码咨询|免费订阅|主管部门：|规划和前期经费|此件公开发布',name):
+            if re.search(r'网盘更新|扫码咨询|免费订阅|主管部门：|规划和前期经费|此件公开发布|征求意见稿',name):
                 continue
             # 全数字/占位符清洗:项目名全数字或全破折号("——")→ 整条过滤;字段同型 → 置空
             if name and (re.fullmatch(r'[\d,，.．\s]+', name)
@@ -1347,7 +1350,7 @@ class BaseParser(ABC):
         pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 2:
+            if line_idx == 17:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1616,7 +1619,7 @@ class BaseParser(ABC):
                 nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
                 if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
                     del cells[name_col]
-            if row_i == 2:
+            if row_i == 17:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue
