@@ -81,7 +81,7 @@ class XlsxParser(BaseParser):
             logger.warning(f"{file_path}[{sheet.title}]: 判定为统计汇总表(无项目),已跳过并记录名单")
             return []
         # 省份汇总表检测(如 "第一批(截止2025.01.24)":数据第 2 列为省份名)→ 干扰,记录名单
-        is_summary, sample = self._is_province_summary(sheet)
+        is_summary, sample = self._is_province_summary(sheet,valid_len=valid_len)
         if is_summary:
             record_noise(file_path, sheet.title, sample)
             logger.warning(f"{file_path}[{sheet.title}]: 判定为各省汇总表干扰数据,已跳过并记录名单")
@@ -91,7 +91,7 @@ class XlsxParser(BaseParser):
             # 本 sheet 暂走两列式退化解析,待人工完善表头信号后自动修正
             self._record_unknown_header(file_path, sheet.title, header_rows)
             # 两列式退化解析:各省摘要清单(分类|项目名,无表头)
-            two_col = self._parse_two_column(sheet)
+            two_col = self._parse_two_column(sheet,valid_len=valid_len)
             if two_col:
                 return self._filter_noise(file_path, sheet.title, two_col)
             logger.warning(f"{file_path}[{sheet.title}]: 前 {HEADER_SCAN_ROWS} 行未找到表头,跳过")
@@ -430,7 +430,7 @@ class XlsxParser(BaseParser):
             logger.warning(f"表头诊断记录失败: {ex}")
 
     @staticmethod
-    def _is_province_summary(sheet: Any) -> tuple[bool, str]:
+    def _is_province_summary(sheet: Any,valid_len:int=0) -> tuple[bool, str]:
         """省份汇总表检测:数据行第 2 列多为省份名(如 "1|北京市|500个…")。
 
         判定条件:省份名行占比 ≥80%(覆盖各省汇总表与省→地级市对照表)。
@@ -439,7 +439,7 @@ class XlsxParser(BaseParser):
         checked = 0
         prov = 0
         sample = ''
-        for row in sheet.iter_rows(values_only=True):
+        for row in sheet.iter_rows(max_col=valid_len if valid_len>0 else 50,values_only=True):
             cells = list(row)
             if len(cells) < 2:
                 continue
@@ -492,11 +492,11 @@ class XlsxParser(BaseParser):
         return BaseParser.merge_header_rows(header_rows, header_idx,
                                             header_merged, merged_ranges)
 
-    def _parse_two_column(self, sheet: Any) -> List[Dict[str, Any]]:
+    def _parse_two_column(self, sheet: Any, valid_len:int=0) -> List[Dict[str, Any]]:
         """两列式清单退化解析:第一列为分类/性质、第二列为项目名(无表头)。"""
         projects: List[Dict[str, Any]] = []
         context: Dict[str, str] = {}
-        for i, row in enumerate(sheet.iter_rows(values_only=True), start=1):
+        for i, row in enumerate(sheet.iter_rows(max_col=valid_len if valid_len>0 else 50,y=True), start=1):
             cells = list(row)
             first = str(cells[0] or '').strip() if cells else ''
             second = str(cells[1] or '').strip() if len(cells) > 1 else ''
