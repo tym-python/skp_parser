@@ -640,26 +640,44 @@ class BaseParser(ABC):
         # 【】强调包装去壳(如 "【预备】(1个)" 等同 "预备(1个)",贵阳 2026)
         value = BaseParser._unwrap_cat_bracket(value)
 
+        # 建设性质: "续建项目(597个)" / "计划开工项目(318个)"
+        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+                                rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
+                                rf'\s*$', value)
+        if m_pt:
+            context['project_type'] = m_pt.group('pt')
+            return True
+
         # 序号+分类: "1、合肥市(915个)" / "一、工业(321项)" / "一、创新能力提升项目26个"
         # 单格场景里 "一、" 与 "1、" 都视为一级标题(重置),与 update_category_context
         # 的 m1 不同(那里 "1、" 是三级);如需区分,把 level 改成按序号类型动态判定
-        m = re.match(r'^[\d一二三四五六七八九十]+[、.．]\s*(.+)$', value)
-        if m:
-            cat = re.sub(r'[（(]\d+\s*(?:个|项)[)）].*$', '', m.group(1)).strip()
+        m1 = re.match(r'^[一二三四五六七八九十]+[、\s]\s*(.+)$', value)
+        if m1:
+            cat = re.sub(r'[（(]\s*共?\s*\d+\s*(?:个|项)[)）].*$', '', m1.group(1)).strip()
             cat = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', cat).strip()  # 去行尾数字量词
-            if cat and (len(cat) <= 12 or BaseParser._looks_like_category(cat)):
+            if cat:
                 BaseParser._apply_category_level(context, 1, cat)  # ← 一级重置
                 return True
-            if cat:
-                # 序号+长文本(如 "2.城区公交站台升级改造:拟对…" 项目内容续行)→ 跳过
-                return True
-        # 建设性质: "续建项目(597个)" / "计划开工项目(318个)"
-        m2 = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
-                                rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
-                                rf'\s*$', value)
+
+        # 括号序号二级标题(如 "（一）交通（104项）" / "（一）交通"):追加到当前
+        # 一级分类下("基础设施"+"交通" → "基础设施-交通"),同级 "（二）" 替换最后一段;
+        # 与 update_category_context 的 m2 语义一致
+        m2 = re.match(r'^[（(][一二三四五六七八九十—ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', value)
         if m2:
-            context['project_type'] = m2.group('pt')
-            return True
+            raw_sub = m2.group(1).strip()
+            # 统计后缀(量词 "2个" 或 括号整数 "（10）")→ 直接认作分类标题;
+            # 无统计后缀需命中分类名单词(防 "（三）李家岩水库" 数据行误判)
+            has_stat = bool(re.search(r'\d+\s*(?:个|项|件)\s*$'
+                                      r'|[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$',
+                                      raw_sub))
+            sub = re.sub(r'[（(]\d+\s*(?:个|项)[)）].*$', '', raw_sub).strip()
+            sub = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', sub).strip()
+            if has_stat or (sub and BaseParser._looks_like_category(sub)):
+                if sub:
+                    BaseParser._apply_category_level(context, 2, sub)  # ← 二级同级替换
+                return True  # 跳过不产生项目(无分类名时仅跳过)
+            return False  # 无统计且非分类词 → 数据行(如 "（三）李家岩水库")
+
         # 机构名单格行(如 "区水利局"/"宏畅交通集团",责任单位分组)→ 跳过,不产生项目;
         # "…餐厅/展厅/办事大厅" 等场所名尾"厅"是真项目,不按机构处理
         if BaseParser.is_group_row([value]):
@@ -675,6 +693,13 @@ class BaseParser(ABC):
             if cat and len(cat) <= 16:
                 BaseParser._apply_category_level(context, 3, cat)  # ← 三级追加
             return True  # 跳过不产生项目
+        m3 = re.match(r'^[\d]+[、.．]\s*(.+)$', value)
+        if m3:
+            cat = re.sub(r'[（(]\s*共?\s*\d+\s*(?:个|项)[)）].*$', '', m1.group(1)).strip()
+            cat = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', cat).strip()  # 去行尾数字量词
+            if cat and (len(cat) <= 12 or BaseParser._looks_like_category(cat) or re.search(r'\d+\s*(?:个|项|件)\s*[)）]?$',  value)):
+                BaseParser._apply_category_level(context, 3, cat)
+                return True
 
         # "——" 子分类单格行(如 "——铁路")→ 挂到当前分类下
         m_dash_cell = re.match(r'^[—－-]{2,}\s*(.+)$', value)
@@ -683,24 +708,6 @@ class BaseParser(ABC):
             if sub and len(sub) <= 16:
                 BaseParser._apply_category_level(context, 4, sub)  # ← 四级追加
             return True
-        # 括号序号二级标题(如 "（一）交通（104项）" / "（一）交通"):追加到当前
-        # 一级分类下("基础设施"+"交通" → "基础设施-交通"),同级 "（二）" 替换最后一段;
-        # 与 update_category_context 的 m2 语义一致
-        m_seq = re.match(r'^[（(][一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+[)）]\s*(.+)$', value)
-        if m_seq:
-            raw_sub = m_seq.group(1).strip()
-            # 统计后缀(量词 "2个" 或 括号整数 "（10）")→ 直接认作分类标题;
-            # 无统计后缀需命中分类名单词(防 "（三）李家岩水库" 数据行误判)
-            has_stat = bool(re.search(r'\d+\s*(?:个|项|件)\s*$'
-                                      r'|[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$',
-                                      raw_sub))
-            sub = re.sub(r'[（(]\d+\s*(?:个|项)[)）].*$', '', raw_sub).strip()
-            sub = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', sub).strip()
-            if has_stat or (sub and BaseParser._looks_like_category(sub)):
-                if sub:
-                    BaseParser._apply_category_level(context, 2, sub)  # ← 二级同级替换
-                return True  # 跳过不产生项目(无分类名时仅跳过)
-            return False  # 无统计且非分类词 → 数据行(如 "（三）李家岩水库")
 
         # 行尾数字量词(如 "前期准备项目135个","科右中旗重大项目合计"):性质词开头 → project_type;其他 → 分类
         if re.search(r'\d+\s*(?:个|项|件)\s*$', value):
@@ -1036,10 +1043,6 @@ class BaseParser(ABC):
         if m_pt:
             context['project_type'] = m_pt.group('pt')
             return True
-
-        # m = re.search(rf'(?P<pt>{PT})', text)
-        # if m and len(text) <= 10:
-        #     context['project_type'] = m.group('pt')
 
         # 纯建设性质标题(如 "投产项目")→ 更新 project_type
         m_type = re.match(rf'^(?P<pt>{PT})项目?$', text)
