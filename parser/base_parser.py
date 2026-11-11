@@ -144,6 +144,41 @@ class BaseParser(ABC):
                 self.declared_categories.append(item)
         return True
 
+    def _resolve_row_context(self, project: dict, context: dict, row_text: str = "") -> None:
+        """
+        统一处理行数据的上下文关联与字段清洗。
+
+        1. 清洗：如果类别是纯数字（通常是误识别了序号），直接置空。
+        2. 提取：识别“项目数 10个”这类汇总行，提取真实类别名存入上下文。
+        3. 补充：上下文与当前行进行双向类别补充。
+        4. 继承：补充 project_type。
+        context.get('category') and project.get('category') 互补
+        :param project: 当前行的数据字典
+        :param context: 跨行上下文（用于继承类别、类型）
+        :param row_text: 当前行的整行文本（' '.join(cells)），用于匹配汇总行
+        """
+        if not project:
+            return
+
+        # 1. 过滤纯数字的 category 异常值（如错把序号当成了类别）
+        cat_val = str(project.get('category') or '').strip()
+        if re.fullmatch(r'\d+', cat_val):
+            project['category'] = ''
+
+        # 2. 识别“项目数”汇总行，提取真实的类别名称
+        # 匹配如："项目数 30个"、"项目数 1,200 项"
+        if re.fullmatch(r'项目数\s*[\d,，.．]*\s*(?:个|项|件)?', project['project_name']) and row_text:
+            # 将“项目数”及数字替换掉，提取出真正的类别名，如 "现代服务业项目"
+            self.apply_category(row_text,context)
+        # 3. 上下文与当前项目 category 双向补充
+        if context.get('category') and not project.get('category'):
+            project['category'] = context['category']
+        elif not context.get('category') and project.get('category'):
+            context['category'] = project['category']
+        # 4. 继承补充 project_type
+        if not project.get('project_type'):
+            project['project_type'] = context.get('project_type', '')
+
     @abstractmethod
     def parse(self, file_path: str) -> List[Dict[str, Any]]:
         """解析单个文件,返回项目记录列表(字段见 field_mapping.map_row)。"""
@@ -586,7 +621,7 @@ class BaseParser(ABC):
         return ''
 
     @staticmethod
-    def classify_single_row(value: str, context: Dict[str, str]) -> bool:
+    def classify_single_row(value: str, context: Dict[str, str], header_map:dict= {}) -> bool:
         """单格分类行识别(安徽/广西等"分类独立一行"结构),更新上下文并返回是否分类行。
 
         支持:
@@ -599,6 +634,8 @@ class BaseParser(ABC):
         """
         value = value.strip()
         if not value or value.isdigit() or len(value) == 1:
+            return False
+        if 'category' in header_map.values():
             return False
         # 【】强调包装去壳(如 "【预备】(1个)" 等同 "预备(1个)",贵阳 2026)
         value = BaseParser._unwrap_cat_bracket(value)
@@ -1058,15 +1095,15 @@ class BaseParser(ABC):
         # 注意 "(3)银川市…光伏发电项目" 是子序号+项目名(数据行),非分类标题
         # ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ 优先三级标题
         m3 = re.match(r'^[（(]\s*\d+\s*[)）]\s*(.+)$', text)
-        # is_roman = False
         if not m3:
             # 负号序号(如 广东 "-1 信息基础设施项目")= 三级分类(与罗马同级挂载)
             m3 = re.match(r'^-\d+\s+(.+)$', text)
-            # is_roman = bool(m3)
         if not m3:
             # 罗马数字 / 带圈序号(如 "① 交通项目7个")= 三级分类
             m3 = re.match(r'^[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫXI①②③④⑤⑥⑦⑧⑨⑩XIV]+[、.．\s]\s*(.+)$', text)
-            # is_roman = bool(m3)
+        if not m3:
+            # \d+ xxxx \d+个
+            m3 = re.match(r'^\d+[、.．\s](.+?项目数\d+\s*个)$', raw)
         if m3:
             sub_raw = m3.group(1)
             # 概况说明文字(如 "（一）市住建委 项目14个，2025年计划完成4.36亿元")→ 跳过
@@ -1277,8 +1314,8 @@ class BaseParser(ABC):
         """
         # 先去除数字(分类标题可能同行带金额,如 "房地产 123 456")
         cleaned = re.sub(r'\s+\d+(?:[，,.]\d+)*', '', sub)
-        if re.search('浙|杭|温州', cleaned):
-            return True
+        if re.search('浙|杭|温州|打包', cleaned):
+            return False
         # 项数特征:尾部括号数字("（16项）"/"（172个）"/"（10）" 纯数字,如 "实验室体系建设（10）")
         if re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$', sub):
             return True
@@ -1324,7 +1361,8 @@ class BaseParser(ABC):
     @staticmethod
     def _record_declared(text: str, context: Dict[str, str]) -> None:
         """记录分类标题声明的项数("（共N项）"/"（172个）"),仅限分类行内部调用。"""
-        m_decl = re.search(r'[（(]\s*(?:共)?\s*(\d+)\s*(?:项|个)\b', text)
+        # m_decl = re.search(r'[（(]\s*(?:共)?\s*(\d+)\s*(?:项|个)\b', text)
+        m_decl = re.search(r'(?<!\d)(?:[（(]\s*共?\s*|项目数\s*)(\d+)\s*(?:个(?!项目)|项(?!目))', text)
         if m_decl:
             context['declared_count'] = int(m_decl.group(1))
 
@@ -1679,22 +1717,15 @@ class BaseParser(ABC):
                 continue
             # 单格行且无序号 → 分类标题行(如 广东表 "基础设施工程"、安徽表 "1、合肥市(915个)")
             non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c)]
-            if len(non_empty) == 1 and len(header_map) > 1 and 'category' not in header_map.values():
-                if BaseParser.classify_single_row(non_empty[0], context):
+            if len(non_empty) == 1 and len(header_map) > 1:
+                if BaseParser.classify_single_row(non_empty[0], context, header_map):
                     continue
             project = map_row(header_map, cells, headers=headers, file_year=file_year)
             name = project.get('project_name')
             if not name:
                 continue
             # 上下文分类仅补充,不覆盖 项目类别/产业类别 列的映射值
-            if re.fullmatch(r'\d+',project.get('category','')):
-                project.update({'category':''})
-            if context.get('category') and not project.get('category'):
-                project['category'] = context['category']
-            elif not context.get('category') and project.get('category'):
-                context['category'] = project.get('category')
-            if not project.get('project_type'):
-                project['project_type'] = context.get('project_type', '')
+            self._resolve_row_context(project, context,' '.join(map(str, cells)))
             project['source_row'] = row_i  # 表格内行号(表头后第 1 行 = 1)
             projects.append(project)
         return projects, header_map

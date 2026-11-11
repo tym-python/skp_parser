@@ -41,7 +41,7 @@ class XlsParser(BaseParser):
         """
         projects: List[Dict[str, Any]] = []
         context: Dict[str, str] = {}
-        for i, cells in enumerate(self._sheet_rows(sheet), start=1):
+        for i, cells in enumerate(self._sheet_rows(sheet)[0], start=1):
             first = str(cells[0] or '').strip() if cells else ''
             second = str(cells[1] or '').strip() if len(cells) > 1 else ''
             if first and not second:
@@ -69,16 +69,42 @@ class XlsParser(BaseParser):
             })
         return self.filter_blank_projects(projects)
 
-    def _sheet_rows(self, sheet: Any, max_row: Optional[int] = None) -> List[List[Any]]:
+    def _sheet_rows(self, sheet: Any, max_row: Optional[int] = None, valid_len: Optional[int] = 0): #  -> List[List[Any]]
         """按行取 sheet 单元格值(xlrd 无迭代器,手动构造)。"""
         n = sheet.nrows if max_row is None else min(max_row, sheet.nrows)
-        return [[sheet.cell_value(i, j) for j in range(sheet.ncols)] for i in range(n)]
+        if n == 0:
+            return []
+
+        MAX_COL_LIMIT = 50
+
+        if valid_len == 0:
+            # 1. 嗅探真实的有效列数（只扫前 20 行，速度极快）
+            scan_limit = min(20, n)
+            # 从右向左反向扫描，寻找第一列有数据的列
+            for j in range(min(sheet.ncols - 1,MAX_COL_LIMIT), -1, -1):
+                has_data = False
+                for i in range(scan_limit):
+                    val = sheet.cell_value(i, j)
+                    if val is not None and str(val).strip() != "":
+                        has_data = True
+                        break
+                if has_data:
+                    valid_len = j + 1
+                    break
+
+        # 如果整张表前 20 行全是空的，valid_len 为 0，直接返回
+        if valid_len == 0:
+            return [],valid_len
+
+        # 2. 根据真实列数读取数据（将原本的 range(sheet.ncols) 替换为 range(valid_len)）
+        return [sheet.row_values(i)[:valid_len] for i in range(n)],valid_len
+        # return [[sheet.cell_value(i, j) for j in range(sheet.ncols)] for i in range(n)]
 
     def _parse_sheet(self, file_path: str, sheet: Any) -> List[Dict[str, Any]]:
-        header_rows = self._sheet_rows(sheet, HEADER_SCAN_ROWS)
+        header_rows,valid_len = self._sheet_rows(sheet, HEADER_SCAN_ROWS)
         header_map, header_idx = self.find_header(header_rows, max_scan=HEADER_SCAN_ROWS)
         # 省份汇总表检测(如 "第一批(截止2025.01.24)":数据第 2 列为省份名)→ 干扰,记录名单
-        is_summary, sample = self._is_province_summary(sheet)
+        is_summary, sample = self._is_province_summary(sheet,valid_len)
         if is_summary:
             record_noise(file_path, sheet.name, sample)
             logger.warning(f"{file_path}[{sheet.name}]: 判定为各省汇总表干扰数据,已跳过并记录名单")
@@ -112,9 +138,9 @@ class XlsParser(BaseParser):
         from parser.field_mapping import build_header_map
         header_map = build_header_map(headers)
         # 普遍数据行非空列数(分组行判定的动态基准)
-        all_rows = self._sheet_rows(sheet)
+        all_rows = self._sheet_rows(sheet,valid_len=valid_len)[0]
         # 用于数字过滤，不过滤小于最大项目数的整型
-        max_project_num = len(all_rows)
+        # max_project_num = len(all_rows)
         normal_cols = BaseParser._normal_cols(all_rows,header_map)
         # 表头列错位修正:合并表头检查优先,数字列检测兜底
         header_map = BaseParser._fix_merged_header(header_map, sheet.merged_cells, header_idx)
@@ -192,7 +218,7 @@ class XlsParser(BaseParser):
             # 单格分类行(分类独立一行,如 "1、合肥市(915个)"、"续建项目(597个)")→ 分类上下文
             non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip()]
             if len(non_empty) == 1 and len(header_map) > 1:
-                if self.classify_single_row(non_empty[0], context):
+                if self.classify_single_row(non_empty[0], context, header_map):
                     continue
             joined = " ".join(str(c).strip() for c in cells if c is not None and str(c).strip())
             if self.apply_category(joined, context):
@@ -205,10 +231,7 @@ class XlsParser(BaseParser):
             if len(non_empty) <= 2 and self.is_category_name(name):
                 continue
             # 上下文分类仅补充,不覆盖 项目类别/产业类别 列的映射值
-            if context.get('category') and not project.get('category'):
-                project['category'] = context['category']
-            if not project.get('project_type'):
-                project['project_type'] = context.get('project_type', '')
+            self._resolve_row_context(project,context,' '.join(map(str, cells)))
             # sheet 名未纳入 project(category/project_type 均未体现)→ 存入 extra
             sheet_cat = context.get('sheet_category')
             sheet_type = context.get('sheet_type')
@@ -231,7 +254,7 @@ class XlsParser(BaseParser):
             return []
         return projects
 
-    def _is_province_summary(self, sheet: Any) -> tuple[bool, str]:
+    def _is_province_summary(self, sheet: Any, valid_len:int=0) -> tuple[bool, str]:
         """省份汇总表检测:数据行第 2 列多为省份名(如 "1|北京市|500个…")。
 
         表头可能被误识别(子表头行含"总投资额"等),此时解析产出为 0,
@@ -242,7 +265,7 @@ class XlsParser(BaseParser):
         checked = 0
         prov = 0
         sample = ''
-        for cells in self._sheet_rows(sheet):
+        for cells in self._sheet_rows(sheet,valid_len=valid_len)[0]:
             if len(cells) < 2:
                 continue
             v1 = str(cells[1] or '').strip()

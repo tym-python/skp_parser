@@ -198,7 +198,7 @@ class XlsxParser(BaseParser):
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
             cells = list(row)
-            if i == 9-1:
+            if i == 474-1:
                 pass
             # 跳过空行，跳过汇总行
             if not self.is_data_row(cells) or self.skip_summary_row(cells):
@@ -314,7 +314,7 @@ class XlsxParser(BaseParser):
                     context['_relax'] = True
                 # 单格分类行(分类独立一行,如 "1、合肥市(915个)"、"续建项目(597个)")→ 分类上下文
                 if len(non_empty) == 1 and len(header_map) > 1:
-                    if self.classify_single_row(non_empty[0], context):
+                    if self.classify_single_row(non_empty[0], context, header_map):
                         if relax_ok:
                             context.pop('_relax', None)
                         continue
@@ -361,11 +361,8 @@ class XlsxParser(BaseParser):
             # (如 宁夏 "(1)宁夏泽恺三道山风电项目" 是光伏/风电分类下的子序号项目)
             if len(non_empty) <= 2 and self.is_category_name(name):
                 continue
-            # 上下文分类仅补充,不覆盖 项目类别/产业类别 列的映射值
-            if context.get('category') and not project.get('category'):
-                project['category'] = context['category']
-            if not project.get('project_type'):
-                project['project_type'] = context.get('project_type', '')
+            # context.get('category') and project.get('category') 互补
+            self._resolve_row_context(project,context,' '.join(map(str, cells)))
             # sheet 名未纳入 project(category/project_type 均未体现)→ 存入 extra
             sheet_cat = context.get('sheet_category')
             sheet_type = context.get('sheet_type')
