@@ -15,9 +15,9 @@ logger = get_logger(__file__)
 CATEGORY_STRONG_WORDS = (
     # 纯行业大类词:几乎不会出现在具体项目名中
     '基础设施', '基础产业', '重大产业', '产业发展', '产业工程', '产业转型',
-    '制造业', '服务业', '现代服务', '交通', '民生', '社会事业', '社会民生',
+    '制造业', '服务业', '现代服务', '交通基础设施', '民生', '社会事业', '社会民生',
     '市政基础设施', '城建', '战略性新兴', '传统产业','市政设施安全改造','市政府','市政设施',
-    '市政道路',
+    '市政道路','交通类','一体化交通枢纽','综合交通枢纽','交通运输'
 )
 CATEGORY_WEAK_WORDS = (
     # 弱词命中且文本 ≤6 字才判为分类。
@@ -32,7 +32,7 @@ CATEGORY_WEAK_WORDS = (
     '供热', '休闲', '康养', '应急', '安全', '资源', '粮食', '冷链', '革命',
     '新材料', '房地产', '领域', '类','国铁干线', '航道整治','天然气发电',
     '城市建设','城市道路','国省','航空', '体系', '油气开发','风力发电','其他工业产业',
-    '实施项目','产业项目','农业水利','生态环保','交通物流','文化旅游','市政',
+    '实施项目','产业项目','农业水利','生态环保','交通物流','文化旅游','市政','交通',
 )
 CATEGORY_Supplement_WORDS = (
     # 部分被识别成项目的分类，全等
@@ -40,7 +40,7 @@ CATEGORY_Supplement_WORDS = (
     '新型基础设施（含信息、融合、创新基础设施等）', '教育、文化、体育及社会服务', '生态修复、环境整治（含流域治理）','种植业','草产业','城镇污水垃圾处理',
     '港口、码头、航运及航电枢纽','综合交通枢纽及一体化设施项目', '水资源保障建设项目', '高性能船舶与海洋工程装备项目','普及高水平公共教育建设项目',
     '一产项目','二产项目','三产项目','研发平台','科创园区','乡村振兴','安置房项目','产业转型升级及科技创新项目','城市基础设施项目','热带高效农业产业',
-    '新型城镇化项目','保障性安居工程','房地产开发项目','生态治理与环境提升类','热带高效农业产业',''
+    '新型城镇化项目','保障性安居工程','房地产开发项目','生态治理与环境提升类','热带高效农业产业','交通绿色智能建造','综合交通枢纽及停车场',
 )
 PROJECT_TYPE_WORDS = (
     '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进', '计划新开工','计划建成','前期准备'
@@ -1221,6 +1221,8 @@ class BaseParser(ABC):
             return
         if not cleaned or '明细' in cleaned:
             return
+        if re.fullmatch(r'\d+', cleaned):
+            return
         if re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned):
             return  # 汇总词("合计/总计/小计")不做分类上下文
         m_mix = re.match(rf'^(?P<pt>{PT})(?:项目)?\s*[-－\s]', cleaned)
@@ -1275,6 +1277,8 @@ class BaseParser(ABC):
         """
         # 先去除数字(分类标题可能同行带金额,如 "房地产 123 456")
         cleaned = re.sub(r'\s+\d+(?:[，,.]\d+)*', '', sub)
+        if re.search('浙|杭|温州', cleaned):
+            return True
         # 项数特征:尾部括号数字("（16项）"/"（172个）"/"（10）" 纯数字,如 "实验室体系建设（10）")
         if re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$', sub):
             return True
@@ -1282,6 +1286,8 @@ class BaseParser(ABC):
             return True
         # 强词/弱词命中均需文本较短(≤12/≤6 字),避免 "…快充站建设工程:在KZ-1-368…" 等长文本行误判
         if len(cleaned) <= 12 and any(kw in cleaned for kw in CATEGORY_STRONG_WORDS):
+            return True
+        if len(cleaned) <= 10 and any(kw in cleaned for kw in ('交通枢纽','轨道交通')):
             return True
         if len(cleaned) <= 6 and any(kw in cleaned for kw in CATEGORY_WEAK_WORDS):
             return True
@@ -1350,7 +1356,7 @@ class BaseParser(ABC):
         pending = False     # true 当前行是项目
         list_mode = False  # bare 模式:出现 分区标题/性质组头 后才把裸行当项目条目
         for line_idx, line in enumerate(lines, start=1):
-            if line_idx == 17:
+            if line_idx == 8:
                 pass
             text = clean_text(line).strip()
             if not text:
@@ -1619,7 +1625,7 @@ class BaseParser(ABC):
                 nx = str(cells[name_col + 1] or '').strip() if name_col + 1 < len(cells) else ''
                 if c0 and BaseParser._is_number(c0) and len(cells) == max_w and nx:
                     del cells[name_col]
-            if row_i == 17:
+            if row_i == 8:
                 pass
             if BaseParser.skip_summary_row(cells) or not BaseParser.is_data_row(cells):
                 continue
@@ -1671,10 +1677,9 @@ class BaseParser(ABC):
                 and BaseParser.is_business_data_row(cells, header_map)
             if not is_biz_row and self.apply_category(joined, context):
                 continue
-            group_pending = False
             # 单格行且无序号 → 分类标题行(如 广东表 "基础设施工程"、安徽表 "1、合肥市(915个)")
             non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c)]
-            if len(non_empty) == 1 and len(header_map) > 1:
+            if len(non_empty) == 1 and len(header_map) > 1 and 'category' not in header_map.values():
                 if BaseParser.classify_single_row(non_empty[0], context):
                     continue
             project = map_row(header_map, cells, headers=headers, file_year=file_year)
