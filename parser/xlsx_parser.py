@@ -197,7 +197,7 @@ class XlsxParser(BaseParser):
             minimal_numbered = numbered_cnt
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
         # 金额单位
-        investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx])
+        investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx],headers,header_map)
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
             cells = list(row)
             if i == 15-1:
@@ -552,7 +552,7 @@ class XlsxParser(BaseParser):
     def _map_cells(self, header_map: Dict[int, str], cells: List[Any],
                    headers: Optional[List[Any]] = None,
                    pname_candidates: Optional[List[int]] = None,
-                   investment_unit:str='') -> Dict[str, Any]:
+                   investment_unit:Dict[str, str]={}) -> Dict[str, Any]:
         """按列映射生成项目 dict(project_name 候选列回退见 map_row)。"""
         return map_row(header_map, cells, headers=headers, file_year=self.file_year,
                        pname_candidates=pname_candidates,investment_unit=investment_unit)

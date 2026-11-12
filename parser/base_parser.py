@@ -2,9 +2,10 @@
 
 import re
 from abc import ABC, abstractmethod
+from itertools import chain
 from typing import Any, Dict, List, Optional, Tuple
 from parser.text_clean import clean_text
-from parser.field_mapping import build_header_map, clean_amount, extract_years, map_row
+from parser.field_mapping import build_header_map, clean_amount, extract_years, map_row, header_unit
 from util.log_util import get_logger
 
 logger = get_logger(__file__)
@@ -113,7 +114,12 @@ SUMMARY_QTY_RE = re.compile(
     r'\d+\s*(?:个|项|件)(?=[，。；;,，、)）]|其中|总投资|亿元|万元|$)')
 SUMMARY_CLAUSE_RE = re.compile(r'[，。；;,，]|其中|总投资|亿元|万元')
 
-INVESTMENT_UNIT_RE = re.compile(r'^(?:金额\s*(?:单位)?|单位)\s*[:：]\s*([万亿]元?)$')
+INVESTMENT_UNIT_RE = re.compile(
+    r'^(?:金额\s*(?:单位)?|单位)\s*[:：]\s*'
+    r'(?:[\u4e00-\u9fa5]\s*[、，,]\s*)?'   # 前：一个单字单位 + 顿号
+    r'([万亿]元?)'                         # 主：万/亿元
+    r'(?:\s*[、，,]\s*[\u4e00-\u9fa5])?$'   # 后：顿号 + 一个单字单位
+)
 
 class BaseParser(ABC):
     """各文件类型解析器必须实现 parse(file_path),返回项目 dict 列表。"""
@@ -1735,13 +1741,26 @@ class BaseParser(ABC):
         return projects, header_map
 
     @staticmethod
-    def _get_investment_unit(header_up_row):
-        for row in header_up_row:
-            for i in row:
-                if i and INVESTMENT_UNIT_RE.search(i):
-                    INVESTMENT_UNIT = INVESTMENT_UNIT_RE.search(i).group(1)
-                    return INVESTMENT_UNIT
-        return ''
+    def _get_investment_unit(header_up_row:list,headers:list,header_map:dict):
+        '''
+        获取碧表头前金额单位、headers中金额对应列单位；
+        :param header_up_row:
+        :param headers:
+        :param header_map:
+        :return:
+        '''
+        investmen_unit_dict = {'INVESTMENT_UNIT': ''}
+        for cell in chain.from_iterable(header_up_row):
+            if cell and (m := INVESTMENT_UNIT_RE.search(cell.strip())):
+                investmen_unit_dict['INVESTMENT_UNIT'] = m.group(1)
+                break
+        for idx, field in header_map.items():
+            if field in ['total_investment','annual_investment']:
+                unit_scale = header_unit(str(headers[idx] or '').replace('\n', '').strip()) if headers and idx < len(headers) else ''
+                investmen_unit_dict[idx] = unit_scale
+        if (units := [v for v in investmen_unit_dict.values() if v]) and len(units) == 1:
+            investmen_unit_dict['INVESTMENT_UNIT'] = units[0]
+        return investmen_unit_dict
 
     @staticmethod
     def _is_number(s):
