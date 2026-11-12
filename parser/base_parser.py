@@ -113,6 +113,7 @@ SUMMARY_QTY_RE = re.compile(
     r'\d+\s*(?:个|项|件)(?=[，。；;,，、)）]|其中|总投资|亿元|万元|$)')
 SUMMARY_CLAUSE_RE = re.compile(r'[，。；;,，]|其中|总投资|亿元|万元')
 
+INVESTMENT_UNIT_RE = re.compile(r'^(?:金额\s*(?:单位)?|单位)\s*[:：]\s*([万亿]元?)$')
 
 class BaseParser(ABC):
     """各文件类型解析器必须实现 parse(file_path),返回项目 dict 列表。"""
@@ -1734,6 +1735,15 @@ class BaseParser(ABC):
         return projects, header_map
 
     @staticmethod
+    def _get_investment_unit(header_up_row):
+        for row in header_up_row:
+            for i in row:
+                if i and INVESTMENT_UNIT_RE.search(i):
+                    INVESTMENT_UNIT = INVESTMENT_UNIT_RE.search(i).group(1)
+                    return INVESTMENT_UNIT
+        return ''
+
+    @staticmethod
     def _is_number(s):
         '''统计行有效项数时，需要排除纯数字项(含千分位逗号,如 "1,584,946.56")'''
         try:
@@ -1767,7 +1777,7 @@ class BaseParser(ABC):
         apply_category 的括号统计门控 + 兜底分支误吞为分类行(温州 882)。
         """
         for col, field in header_map.items():
-            if field in ['project_name','sortNum']:
+            if field in ['project_name','sortNum','Investment_cat']:
                 continue
             if col >= len(cells):
                 continue

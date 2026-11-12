@@ -147,6 +147,8 @@ class XlsParser(BaseParser):
         header_map = BaseParser._fix_numeric_project_col(header_map, all_rows, header_idx)
         # 表头之前的行:分类标题计入上下文;装饰行(备注/正文标签/清单概况·总数
         # 描述,同 xlsx is_decor_text)→ 跳过且不设任何 category
+        # 金额单位
+        investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx])
         for row in header_rows[:header_idx]:
             joined = " ".join(
                 str(c).strip() for c in row if c is not None and str(c).strip())
@@ -223,7 +225,7 @@ class XlsParser(BaseParser):
             joined = " ".join(str(c).strip() for c in cells if c is not None and str(c).strip())
             if self.apply_category(joined, context):
                 continue
-            project = map_row(header_map, cells, headers=headers, file_year=self.file_year)
+            project = map_row(header_map, cells, headers=headers, file_year=self.file_year,investment_unit=investment_unit)
             name = project.get('project_name')
             if not name:
                 continue

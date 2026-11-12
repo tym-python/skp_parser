@@ -196,9 +196,11 @@ class XlsxParser(BaseParser):
                     break
             minimal_numbered = numbered_cnt
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
+        # 金额单位
+        investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx])
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
             cells = list(row)
-            if i == 474-1:
+            if i == 15-1:
                 pass
             # 跳过空行，跳过汇总行
             if not self.is_data_row(cells) or self.skip_summary_row(cells):
@@ -345,7 +347,7 @@ class XlsxParser(BaseParser):
                     context.pop('declared_count', None)
                     if relax_ok:
                         context.pop('_relax', None)
-            project = self._map_cells(header_map, cells, headers, pname_candidates)
+            project = self._map_cells(header_map, cells, headers, pname_candidates, investment_unit)
             name = project.get('project_name')
             if not name:
                 continue
@@ -549,10 +551,11 @@ class XlsxParser(BaseParser):
 
     def _map_cells(self, header_map: Dict[int, str], cells: List[Any],
                    headers: Optional[List[Any]] = None,
-                   pname_candidates: Optional[List[int]] = None) -> Dict[str, Any]:
+                   pname_candidates: Optional[List[int]] = None,
+                   investment_unit:str='') -> Dict[str, Any]:
         """按列映射生成项目 dict(project_name 候选列回退见 map_row)。"""
         return map_row(header_map, cells, headers=headers, file_year=self.file_year,
-                       pname_candidates=pname_candidates)
+                       pname_candidates=pname_candidates,investment_unit=investment_unit)
 
     def _is_number(self, s):
         """纯数字单元格(含千分位逗号,如 "1,584,946.56");金额/数量列不参与文本判断。
@@ -681,7 +684,7 @@ class XlsxParser(BaseParser):
         纯数字、占位符、numCell，不是有效业务数据
         """
         for col, field in header_map.items():
-            if field in ['project_name','sortNum']:
+            if field in ['project_name','sortNum','Investment_cat']:
                 continue
             if col >= len(cells):
                 continue

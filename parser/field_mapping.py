@@ -24,13 +24,14 @@ HEADER_ALIASES: Dict[str, Tuple[str, ...]] = {
     'annual_goal': ('年度工作目标', '年度目标', '当年工作目标', '进度目标或新增效益','年度建设目标','年工作目标', '年主要建设任务', '年工作计划', '年目标任务','工程形象进度','计划形象进度','年建设目标'),
     'year_range': ('建设起止年限', '建设起止时间', '建设年限', '建设周期', '起止年限', '计划工期','计划建设期限'),
     'start_year': ('开工年份', '开工时间', '开工年度', '计划开工', '开工'),
-    'end_year': ('竣工年份', '竣工时间', '完工年份', '计划竣工', '竣工'),
+    'end_year': ('竣工年份', '竣工时间', '完工年份', '计划竣工', '竣工','预计完工'),
     'construction_content': ('建设内容', '主要建设内容', '建设规模', '建设规模和内容',
                              '建设规模及内容', '建设规模及主要内容', '拟建设规模', '项目内容', '项目简介'),
     'responsible_unit': ('责任单位', '牵头单位', '项目主管单位', '监管单位', '主管部门', '主管单位', '主责单位'),
     'category': ('项目类别', '产业类别', '项目分类', '项目大类', '行业分类', '项目类型', '项目领域', '领域分类', '所属行业', '行业类别', '九大领域','领域'),
     'project_type': ('建设性质', '建设阶段', '建设批次','项目性质'),
     'sortNum': ('序号'),
+    'Investment_cat': ('投资类别'),
 }
 
 # 单位类字段:入库时转入 skp_project_unit(单位表头 + 单位名称),不再写入 skp_project
@@ -54,6 +55,7 @@ SKIP_EXTRA_HEADERS = ('序号', '编号', '序次', 'no', 'seq')
 _AMOUNT_QUANTIFIERS = '件片吨亩米个台套户人支节栋座处头只辆艘架次平千瓦标立'
 # 年份文本:如 "2023"、"2023-2025"、"2023年至2025年"
 YEAR_RE = re.compile( r'(?<!\d)(20\d{2})(?:\s*[年\-/—至~～]{1,3}\s*(?<!\d)(20\d{2})(?!\d))?(?!\d)')
+YEARMons_RE = re.compile( r'^(\d{4})[\.\-\s]{1}\d{1,2}$')
 line_YEAR_RE = re.compile(
     r'(20\d{2})'
     r'(?!\s*[年\-/—至~～]\s*(?!20\d{2})\d)'   # 后面不能是 -07 这种非年份编号
@@ -100,7 +102,7 @@ def match_field_with_alias(header: Any) -> Optional[Tuple[str, str]]:
             return 'annual_goal', ''          # 子=主要建设内容 → 年度建设内容
         if '新增生产' in text or '生产能力' in text:
             return None                       # 子=新增生产能力 → 非金额,留 extra
-        if '小计' in text or '合计' in text:
+        if re.search(f'小计|合计|{'|'.join(HEADER_ALIASES['annual_investment'])}',text):
             return 'annual_investment', ''    # 子=小计 → 年度计划投资
         if '总投资' in text:
             # 父=资金来源 → 总投资;父=计划投资类 → 年投资(其"计划总投资"是年度口径)
@@ -193,6 +195,10 @@ def extract_years(text: Any, textType :str='cell') -> Tuple[int, int]:
         return 0, 0
     if isinstance(text, (int, float)) and not isinstance(text, bool):
         year = _excel_serial_to_year(text)
+        if year == 0 and isinstance(text, float):
+            m = YEARMons_RE.search(str(text))
+            if m:
+                return int(m.group(1)), 0
         return (year, 0) if year else (0, 0)
     if textType == 'cell':
         m = YEAR_RE.search(str(text))
@@ -234,7 +240,8 @@ def _matched_alias(idx: int, headers: Optional[List[Any]], field: str) -> str:
 
 def map_row(header_map: Dict[int, str], row: List[Any],
             headers: Optional[List[Any]] = None, file_year: int = 0,
-            pname_candidates: Optional[List[int]] = None) -> Dict[str, Any]:
+            pname_candidates: Optional[List[int]] = None,
+            investment_unit:str='') -> Dict[str, Any]:
     """按 表头列映射 把一行单元格转为项目 dict。
 
     - 金额列 → 万元数值(裸数字按表头单位换算);表头含显式年份且非文件年份的
@@ -266,7 +273,7 @@ def map_row(header_map: Dict[int, str], row: List[Any],
                     project.setdefault('extra_fields', {})[header_text] = str(cell or '').strip()
                 continue
             unit_scale = header_unit(headers[idx]) if headers and idx < len(headers) else ''
-            project[field] = clean_amount(cell, unit_scale=unit_scale, textType='cell')
+            project[field] = clean_amount(cell, unit_scale=unit_scale if unit_scale else investment_unit, textType='cell')
         elif field == 'annual_goal':
             m_year = re.search(r'(20\d{2})', header_text)
             if m_year and file_year and int(m_year.group(1)) != file_year:
