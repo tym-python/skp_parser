@@ -499,7 +499,7 @@ def _detect_horizontal_lines(
                     max_gap_ratio=20.0,  # 横线行高变化
                     min_lines=3,
             ):
-                print('横线分布不合理')
+                # print('横线分布不合理')
                 return []
     return lines
 
@@ -840,24 +840,60 @@ def _split_mixed_anchor_column(
             new_col_defs.append(c)
             continue
 
-        # 2) 提取命中的具体表头类型
-        distinct_fields = set()
+        # ★ 新增：垂直方向合并，解决换行导致的关键词被切断
+        col_all_headers.sort(key=lambda x: (x['x0'], x['y0']))
+        merged_blocks = []
         for it in col_all_headers:
+            if not merged_blocks:
+                merged_blocks.append([it])
+                continue
+
+            last_block = merged_blocks[-1]
+            # 计算上一个块的中心和边界
+            b_xc = sum(x['xc'] for x in last_block) / len(last_block)
+            b_y1 = max(x['y1'] for x in last_block)
+
+            # 计算与当前 item 的间距
+            x_dist = abs(it['xc'] - b_xc)
+            y_dist = it['y0'] - b_y1
+
+            # 判定条件：水平重心相近（<1.5倍字高），且垂直紧挨（<0.8倍字高）
+            if x_dist < avg_h * 1.5 and y_dist < avg_h * 0.8:
+                last_block.append(it)
+            else:
+                merged_blocks.append([it])
+
+        # 将合并后的块生成新的虚拟 items 集合
+        logical_headers = []
+        for block in merged_blocks:
+            block.sort(key=lambda x: x['y0'])  # 保证拼接顺序从上到下
+            logical_headers.append({
+                'text': "".join(x['text'] for x in block),
+                'x0': min(x['x0'] for x in block),
+                'x1': max(x['x1'] for x in block),
+                'xc': sum(x['xc'] for x in block) / len(block),
+                'y0': block[0]['y0'],
+                'y1': block[-1]['y1'],
+            })
+
+        # 2) 提取命中的具体表头类型（基于拼接后的 logical_headers）
+        distinct_fields = set()
+        for it in logical_headers:
             f = get_field(it.get('text') or '')
             if f:
                 distinct_fields.add(f)
 
         # 3) 拦截条件：必须混入 >= 2 个字段，且包含项目名称
         if len(distinct_fields) >= 2 and 'project_name' in distinct_fields:
-            col_all_headers.sort(key=lambda x: x['x0'])
+            logical_headers.sort(key=lambda x: x['x0'])
 
             # 4) 聚类
             sub_columns: List[List[Dict]] = []
-            curr_items = [col_all_headers[0]]
+            curr_items = [logical_headers[0]]
 
-            for i in range(1, len(col_all_headers)):
-                prev = col_all_headers[i - 1]
-                curr = col_all_headers[i]
+            for i in range(1, len(logical_headers)):
+                prev = logical_headers[i - 1]
+                curr = logical_headers[i]
 
                 prev_f = get_field(prev['text'])
                 curr_f = get_field(curr['text'])
@@ -865,12 +901,12 @@ def _split_mixed_anchor_column(
 
                 need_split = False
 
-                # 核心防断逻辑：如果间距极小，认为是同一个复合词（如“项目及单位”），不切
-                if gap < avg_h * 0.5:
-                    need_split = False
-                # 规则 1：不同字段，且距离足够
-                elif prev_f is not None and curr_f is not None and prev_f != curr_f:
+                # 规则 1：不同字段,(以及合并，降低复合词概率）
+                if prev_f is not None and curr_f is not None and prev_f != curr_f:
                     need_split = True
+                # 核心防断逻辑：如果间距极小，认为是同一个复合词（如“项目及单位”），不切
+                elif gap < avg_h * 0.5:
+                    need_split = False
                 # 规则 2：单边命中（如“序号”与“项目名称”）
                 elif (prev_f is not None) != (curr_f is not None):
                     need_split = True
@@ -1140,7 +1176,19 @@ def group_cells_into_rows_with_anchor(
                 anchor_rows,
                 key=lambda r: abs((r['y0'] + r['y1']) / 2.0 - c_yc),
             )
-            best_row['cells'].append(c)
+            # best_row['cells'].append(c)
+
+            # ★ 新增判断：如果离最近的骨架也很远（超过 1.2 倍字高），说明锚点列漏了，单独建行！
+            row_yc = (best_row['y0'] + best_row['y1']) / 2.0
+            if abs(row_yc - c_yc) > avg_h * 1.2:
+                # 动态插入一个新的骨架行
+                new_row = {'y0': c['y0'], 'y1': c['y1'], 'cells': [c]}
+                anchor_rows.append(new_row)
+                # 保持骨架按 y 排序
+                anchor_rows.sort(key=lambda x: x['y0'])
+            else:
+                # 距离近，正常挂靠
+                best_row['cells'].append(c)
 
     # 3) 行内按 col_idx 排序
     for row in anchor_rows:
@@ -1909,9 +1957,13 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\01北京市2023年重点项目清单\北京市2023年重点工程计划\北京市2023年重点工程计划_8.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\16河北省2023年重点项目清单\河北省2023年省重点建设项目名单\河北省2023年省重点建设项目名单_2.png'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\11福建省2023年重点项目清单\2023年福州市\2023年度市级重点项目名录.xlsx'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\07宁夏自治区2026年重点项目清单\2026年宁夏自治区重点建设项目清单\2026年宁夏自治区重点建设项目清单_2.png'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\22江苏省2024年重点项目清单\徐州市2024年\徐州市2024年.13.png'
-        # full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\29四川省2023年重点项目清单\2023年绵阳市\2023绵阳6.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2026年重点项目\02上海市2026年重点项目清单\2026年杨浦区\2026年区重大工程项目清单.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\22江苏省2024年重点项目清单\徐州市2024年\徐州市2024年.22.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0005.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0014.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\14.jpg'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\15海南省2023年重点项目清单\预备.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\22江苏省2024年重点项目清单\徐州市2024年\徐州市2024年.6.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png

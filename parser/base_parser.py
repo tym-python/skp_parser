@@ -73,7 +73,7 @@ GROUP_CITY_MAX_LEN = 5
 # 单行表头(极简清单,header_map ≤1 列)分组行的机构/区划后缀:
 # 不含 集团/公司/学院/研究院/中心 等真项目名单格常见结尾(如 "xx公司"/"xx研究中心")
 GROUP_SINGLE_SUFFIX_RE = re.compile(
-    r'(人民政府|政府|厅|局|委|办|管委会|委员会|县|州|盟|省|联合会|农业科学院|广播电视台|组织部|市铁路建设发展中心|高新区（经开区）)$')
+    r'(人民政府|政府|厅|局|委|办|管委会|委员会|县|州|盟|省|联合会|农业科学院|广播电视台|组织部|市铁路建设发展中心|高新区|经开区|自贸区钦州港片区|经济开发区|高新区（经开区）|滨海新城|三娘湾管理区|北部湾华侨投资区)$')
 GROUP_CITY_SUFFIX_RE = re.compile(r'[市区]$')
 # 多列映射表分组的机构名单格后缀(≤14 字,防长文本误判;不含 学院/医院/学校/研究院,
 # "xx商务中心" 等真项目名由业务字段判断识别)
@@ -119,6 +119,19 @@ INVESTMENT_UNIT_RE = re.compile(
     r'(?:[\u4e00-\u9fa5]\s*[、，,]\s*)?'   # 前：一个单字单位 + 顿号
     r'([万亿]元?)'                         # 主：万/亿元
     r'(?:\s*[、，,]\s*[\u4e00-\u9fa5])?$'   # 后：顿号 + 一个单字单位
+)
+
+# 宽松规则:完整字段判断的业务字段列(与 _is_business_data_row 口径不同,含 construction_content)
+FULL_FIELD_NAMES = {'construction_unit', 'location', 'construction_content',
+                    'responsible_unit', 'project_owner', 'annual_goal','year_range'}
+# 分类行暗示条件(与 update_category_context 门控同口径):（N项/个）/量词/序号/—— 等
+CATEGORY_HINT_RE = re.compile(
+    r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]'                       # （N项/个)/（N)
+    r'|[一二三四五六七八九十ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪ①②③④⑤⑥⑦⑧⑨⑩]+\s*[、.．]'   # 汉字/罗马/带圈序号
+    # r'|^[（(]'                                                      # 括号开头(（一)等)
+    r'|[—－-]{2,}'                                                   # ——
+    r'|\d+\s*(?:个|项|件)\s*$'                                       # 行尾量词
+    # r'|^(新建|续建|竣工投产|投产|预备|储备|新开工|前期)项目?$'            # 建设性质标题
 )
 
 class BaseParser(ABC):
@@ -296,13 +309,14 @@ class BaseParser(ABC):
         - 机构名结尾(如 广西责任表 "自治区教育厅|12|金额" 分组行,
           机构名在序号列且 ≤14 字——数据行项目名不单格带机构尾)
         """
-        non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c) and not re.fullmatch(r'\d+[个|项]',c)]
+        non_empty = [str(c).strip() for c in cells if c is not None and str(c).strip() and not BaseParser._is_number(c) and not BaseParser._is_placeholder(c) and not re.fullmatch(r'\d+[个|项]',str(c))]
         if len(non_empty) != 1:
             return False
         v = non_empty[0]
         # 去单元格内对齐空格(如 广西正文 "南 宁 市"),再做后缀/长度判断
         v_c = re.sub(r'\s+', '', v)
-        if re.match(r'^.+[县州盟省]$', v_c) or v_c in ('市直', '区直'):
+        v_c = re.sub(r'[(（]?\d+\s*(?:个|项|件)\s*[）)]?$', '', v_c).strip()
+        if re.match(r'^.+[县州盟省]$', v_c) or (len(v_c)<5 and re.search('市直|区直',v_c)):
             return True
         if (len(v_c) <= GROUP_CITY_MAX_LEN and GROUP_CITY_SUFFIX_RE.search(v_c)):
             return True
@@ -310,7 +324,7 @@ class BaseParser(ABC):
         # 不含 中心/学院/医院/学校/研究院 结尾(项目名常见,如 "xx商务中心" 是
         # 真项目名,由业务字段判断识别);漏网行在入库时备注标记供人工核查
         # "…餐厅/展厅/办事大厅" 等场所名尾"厅"是真项目(GROUP_VENUE_TAIL_RE),不算机构
-        if len(v) <= 14 and GROUP_ORG_SUFFIX_RE.search(v):
+        if len(v_c) <= 14 and (GROUP_ORG_SUFFIX_RE.search(v_c) or GROUP_SINGLE_SUFFIX_RE.search(v_c)):
             return not bool(GROUP_VENUE_TAIL_RE.search(v_c))
         return False
 
@@ -335,9 +349,10 @@ class BaseParser(ABC):
         if len(non_empty) != 1:
             return False
         v_c = re.sub(r'\s+', '', non_empty[0])
+        v_c = re.sub(r'[(（]?\d+\s*(?:个|项|件)\s*[）)]?$', '', v_c).strip()
         if len(v_c)>PROSE_CELL_MAX_LEN:
             return False
-        if re.match(r'^.+[县州盟省]$', v_c) or v_c in ('市直', '区直'):
+        if re.match(r'^.+[县州盟省]$', v_c) or (len(v_c)<5 and re.search('市直|区直',v_c)):
             return True
         if (allow_city and len(v_c) <= GROUP_CITY_MAX_LEN
                 and GROUP_CITY_SUFFIX_RE.search(v_c)):
@@ -702,7 +717,7 @@ class BaseParser(ABC):
             return True  # 跳过不产生项目
         m3 = re.match(r'^[\d]+[、.．]\s*(.+)$', value)
         if m3:
-            cat = re.sub(r'[（(]\s*共?\s*\d+\s*(?:个|项)[)）].*$', '', m1.group(1)).strip()
+            cat = re.sub(r'[（(]\s*共?\s*\d+\s*(?:个|项)[)）].*$', '', m3.group(1)).strip()
             cat = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', cat).strip()  # 去行尾数字量词
             if cat and (len(cat) <= 12 or BaseParser._looks_like_category(cat) or re.search(r'\d+\s*(?:个|项|件)\s*[)）]?$',  value)):
                 BaseParser._apply_category_level(context, 3, cat)
@@ -1578,7 +1593,8 @@ class BaseParser(ABC):
                                 context: Optional[Dict[str, str]] = None,
                                 file_year: int = 0,
                                 prev_header_map: Optional[Dict[int, str]] = None,
-                                project_list_title : bool=False
+                                project_list_title : bool=False,
+                                investment_unit:Dict[Any, str] = {}
                                 ) -> tuple[List[Dict[str, Any]], Optional[Dict[int, str]]]:
         """公共表格处理:定位表头 → 数据行 map_row → 过滤空项目名,维护分类上下文。
 
@@ -1664,6 +1680,7 @@ class BaseParser(ABC):
                 split_table = True
                 logger.warning(
                     f"检出拆形态表(名称格跨 2 列+子分类合并行):续行 {cont_cnt} 条,恢复行对齐")
+        BaseParser._get_investment_unit(rows[:header_idx], headers, header_map,investmen_unit_dict=investment_unit)
         for row_i, row in enumerate(rows[start:], start=1):
             cells = list(row)
             # 拆形态表行对齐恢复:删除 分类格(首行)/空名称格(续行),名称及后续
@@ -1730,7 +1747,7 @@ class BaseParser(ABC):
             if len(non_empty) == 1 and len(header_map) > 1:
                 if BaseParser.classify_single_row(non_empty[0], context, header_map):
                     continue
-            project = map_row(header_map, cells, headers=headers, file_year=file_year)
+            project = map_row(header_map, cells, headers=headers, file_year=file_year, investment_unit=investment_unit)
             name = project.get('project_name')
             if not name:
                 continue
@@ -1741,7 +1758,15 @@ class BaseParser(ABC):
         return projects, header_map
 
     @staticmethod
-    def _get_investment_unit(header_up_row:list,headers:list,header_map:dict):
+    def flatten(temp):
+        for x in temp:
+            if isinstance(x, (list, tuple)):
+                yield from x
+            else:
+                yield x
+
+    @staticmethod
+    def _get_investment_unit(header_up_row:list, headers:list=[], header_map:dict={}, investmen_unit_dict:dict={}):
         '''
         获取碧表头前金额单位、headers中金额对应列单位；
         :param header_up_row:
@@ -1749,9 +1774,10 @@ class BaseParser(ABC):
         :param header_map:
         :return:
         '''
-        investmen_unit_dict = {'INVESTMENT_UNIT': ''}
-        for cell in chain.from_iterable(header_up_row):
-            if cell and (m := INVESTMENT_UNIT_RE.search(cell.strip())):
+        if not investmen_unit_dict:
+            investmen_unit_dict = {'INVESTMENT_UNIT': ''}
+        for cell in BaseParser.flatten(header_up_row):
+            if cell and (m := INVESTMENT_UNIT_RE.search(str(cell).strip())):
                 investmen_unit_dict['INVESTMENT_UNIT'] = m.group(1)
                 break
         for idx, field in header_map.items():
@@ -1822,3 +1848,102 @@ class BaseParser(ABC):
         :return 需要过滤 True
         '''
         return bool(re.fullmatch(rf'.?(?:{CL}|附件\d|项目数\s*\d+\s*个).?', s))
+
+    # ========================
+    # xlsx、xls 提取的公共方法
+    # ========================
+    def _is_project_count(self, cells: List[Any], idx: int, s: str,
+                          max_project_num: int) -> bool:
+        """分类行项目数判定:紧随文字之后的第一个数据项(前一个非空单元格为文字)、
+        整型(无小数点/金额逗号)、小于 max_project_num、且后一个单元格为空
+        (如 昆明 "一|农林水利|14|None|金额|金额" 的 "14")→ 保留为项目数。
+
+        TODO: 边界情况暂不处理——后一单元格非空(数字后紧跟其他数据项)、
+        数字前无文字(行首数字)等,一律按普通数字过滤。
+        """
+        if not re.fullmatch(r'\d+', s) or int(s) >= max_project_num:
+            return False
+        if idx + 1 < len(cells) and cells[idx + 1] is not None \
+                and str(cells[idx + 1]).strip():
+            return False  # 后一个单元格非空
+        # 计数必须**紧邻左侧文字**(左侧第一格即文字;忠县 2025 "1.制造与加工类"
+        # 文字在 col0、整数投资额在 col16/18,中间隔 15 个空列——不是紧随文字的
+        # 项数,是金额;放行会把单格分类行挤成 2 格导致 classify_single_row
+        # 失效、分类上下文丢失)。如 昆明 "一|农林水利|14|None|金额" 的 "14"
+        if idx < 1:
+            return False
+        pv = str(cells[idx - 1] or '').strip()
+        return bool(pv) and not self._is_placeholder(pv) and not self._is_number(pv)
+
+    def _calc_full_field_stats(self, header_map: Dict[int, str],
+                               all_rows: List[List[Any]],
+                               header_idx: int,
+                               pname_candidates: Optional[List[int]] = None
+                               ) -> tuple[bool, bool]:
+        """文件级宽松规则统计(循环前一次):
+
+        - full_field_sheet: 数据行区域 ≥80% 的行含业务字段文本(FULL_FIELD_NAMES
+          任一列,非纯数字)——完整字段表文件
+        - plain_category_file: 无业务文本的潜在分类行中,含暗示条件者 <50%
+          (暗示条件 = （共N项)/量词/序号/—— 等,如 河南性质行 "续建项目(597个)"
+          普遍带暗示 → 不启用宽松,靠暗示识别即可)
+
+        续行(项目占据多行,如 宁夏 2020:第二行仅投资来源+金额,名称/序号/业务字段
+        全空)→ 不参与统计,否则稀释 full/total 使宽松规则无法启用;
+        名称判定用候选列(pname_candidates,修正后主列+原始列+左邻合并列),
+        名称在候选列的行不误跳过。
+        """
+        full = total = hinted = plain = 0
+        for row in all_rows[header_idx + 1:]:
+            cells = list(row)
+            if not self.is_data_row(cells) or self.skip_summary_row(cells):
+                continue
+            # 续行:名称(候选列)与业务字段全空 → 跳过统计
+            if not self._has_name_text(cells, pname_candidates) \
+                    and not self._has_biz_text(cells, header_map):
+                continue
+            total += 1
+            if self._has_biz_text(cells, header_map):
+                full += 1
+                continue
+            # 潜在分类行:无业务文本;统计其文本是否带暗示条件
+            text = " ".join(str(c).strip() for c in cells
+                            if c is not None and str(c).strip()
+                            and not self._is_number(str(c).strip())
+                            and not self._is_placeholder(str(c).strip()))
+            if CATEGORY_HINT_RE.search(text):
+                hinted += 1
+            else:
+                plain += 1
+        full_field_sheet = total > 0 and full / total >= 0.8
+        plain_category_file = (hinted + plain) > 0 and hinted / (hinted + plain) < 0.5
+        return full_field_sheet, plain_category_file
+
+    def _has_name_text(self, cells: List[Any],
+                       pname_candidates: Optional[List[int]]) -> bool:
+        """本行是否含项目名称文本(候选列任一,非纯数字/占位)。
+
+        名称可能落在候选列(表头修正/合并单元格)而非主列——判定用候选列,
+        续行(名称空)与分类行(名称有值)由此区分。
+        """
+        for col in pname_candidates or []:
+            if col >= len(cells):
+                continue
+            v = str(cells[col] or '').strip()
+            if (v and not self._is_number(v) and not self._is_placeholder(v) and
+                    not self._filter_seconde_name(v)):
+                return True
+        return False
+
+    def _has_biz_text(self, cells: List[Any], header_map: Dict[int, str]) -> bool:
+        """本行是否含业务字段文本(FULL_FIELD_NAMES 列,非纯数字/占位)。
+
+        宽松规则的行级条件:无业务文本 → 可能是无暗示条件的纯文字分类行。
+        """
+        for col, field in header_map.items():
+            if field not in FULL_FIELD_NAMES or col >= len(cells):
+                continue
+            v = str(cells[col] or '').strip()
+            if v and not self._is_number(v) and not self._is_placeholder(v):
+                return True
+        return False
