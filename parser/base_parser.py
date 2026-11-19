@@ -2,7 +2,7 @@
 
 import re
 from abc import ABC, abstractmethod
-from itertools import chain
+from decimal import Decimal, InvalidOperation
 from typing import Any, Dict, List, Optional, Tuple
 from parser.text_clean import clean_text
 from parser.field_mapping import build_header_map, clean_amount, extract_years, map_row, header_unit
@@ -27,7 +27,7 @@ CATEGORY_WEAK_WORDS = (
     '公路', '高速公路', '铁路', '轨道', '机场', '港口', '航运', '能源',
     '电力', '电网', '水利', '生态', '环保', '物流', '信息', '科技', '创新',
     '数字', '文化', '旅游', '医疗', '教育', '卫生', '体育', '电子', '汽车',
-    '装备', '化工', '医药', '生物', '农业', '工业', '食品', '轻工', '大数据',
+    '装备', '化工', '医药', '生物', '农业','农牧业', '工业', '食品', '轻工', '大数据',
     '智能制造', '光伏', '风电', '水电', '火电', '核电', '新能源', '环境治理',
     '绿化', '城市更新', '保障房', '棚改', '老旧小区', '供水', '排水', '燃气',
     '供热', '休闲', '康养', '应急', '安全', '资源', '粮食', '冷链', '革命',
@@ -49,7 +49,7 @@ PROJECT_TYPE_WORDS = (
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
 # 续行标识
-CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)','设项目')
+CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)','设项目','提升改造','改造项目','扩建','迁建','中心','变电','增容','提升','系统','加工')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
 from parser.ocr_to_tablelines import TITLE_KEYWORDS
@@ -100,7 +100,7 @@ PROSE_CELL_MAX_LEN = 150
 # 的 备注/注/附注/注释/说明/特别说明/注记 + 冒号(容忍空格,如 "备 注:")
 NOTE_LABEL_RE = re.compile(
     r'^(?:'
-    r'(?:备\s*注|附\s*注|注释|特别说明|注记|说明|注)\s*[:：]'          # ① 备注类
+    r'(?:备\s*注|附\s*注|注释|特别说明|简要说明|注记|说明|注)\s*[:：]'          # ① 备注类
     r'|标[^。\n]{1,15}?为\s*(?:19|20)\d{2}\s*年[^。\n]{0,40}?项目'    # ② 标注类
     r')'
 )
@@ -134,6 +134,9 @@ CATEGORY_HINT_RE = re.compile(
     # r'|^(新建|续建|竣工投产|投产|预备|储备|新开工|前期)项目?$'            # 建设性质标题
 )
 
+_LEFT  = re.compile(r'[（(]')
+_RIGHT = re.compile(r'[）)]')
+
 class BaseParser(ABC):
     """各文件类型解析器必须实现 parse(file_path),返回项目 dict 列表。"""
 
@@ -152,6 +155,10 @@ class BaseParser(ABC):
         补充type，不同情况下的apply_category，有不同情况
         joined_non_empty：不是业务数据，xlsx。_is_business_data_row，已清洗。
         """
+        if not BaseParser._has_chinese(text):
+            return False
+        if re.fullmatch(r'\d{4}年',text):
+            return True
         if not self.update_category_context(text, context,type):
             return False
         declared = context.get('declared_count')
@@ -182,7 +189,7 @@ class BaseParser(ABC):
 
         # 1. 过滤纯数字的 category 异常值（如错把序号当成了类别）
         cat_val = str(project.get('category') or '').strip()
-        if re.fullmatch(r'\d+', cat_val):
+        if re.fullmatch(r'[0-9\.]+', cat_val):
             project['category'] = ''
 
         # 2. 识别“项目数”汇总行，提取真实的类别名称
@@ -318,7 +325,7 @@ class BaseParser(ABC):
         v_c = re.sub(r'[(（]?\d+\s*(?:个|项|件)\s*[）)]?$', '', v_c).strip()
         if re.match(r'^.+[县州盟省]$', v_c) or (len(v_c)<5 and re.search('市直|区直',v_c)):
             return True
-        if (len(v_c) <= GROUP_CITY_MAX_LEN and GROUP_CITY_SUFFIX_RE.search(v_c)):
+        if (len(re.sub(r'^\d+[、\.]', '', v_c).strip()) <= GROUP_CITY_MAX_LEN and GROUP_CITY_SUFFIX_RE.search(v_c)):
             return True
         # 机构名单格分组行(如 责任单位 "自治区教育厅");≤14 字防长文本误判。
         # 不含 中心/学院/医院/学校/研究院 结尾(项目名常见,如 "xx商务中心" 是
@@ -354,7 +361,7 @@ class BaseParser(ABC):
             return False
         if re.match(r'^.+[县州盟省]$', v_c) or (len(v_c)<5 and re.search('市直|区直',v_c)):
             return True
-        if (allow_city and len(v_c) <= GROUP_CITY_MAX_LEN
+        if (allow_city and len(re.sub(r'^\d+[、\.]', '', v_c).strip()) <= GROUP_CITY_MAX_LEN
                 and GROUP_CITY_SUFFIX_RE.search(v_c)):
             return True
         # 机构/区划后缀分组行;"…餐厅/展厅" 等场所名尾"厅"是真项目,不算机构
@@ -594,7 +601,8 @@ class BaseParser(ABC):
                      and str(cells[i]).strip()
                      and not BaseParser._is_number(cells[i])
                      and not BaseParser._is_placeholder(cells[i])])
-            if n >= 2:
+            # if n >= 2:
+            if BaseParser.is_data_row(cells) and n >= 1:
                 counts[n] += 1
         if not counts:
             return 3
@@ -620,7 +628,7 @@ class BaseParser(ABC):
         if len(non_empty) == 1:
             value = non_empty[0]
             # 较完善的type匹配
-            mt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+            mt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目|类)?\s*(?:共|合计|：|:)?\s*'
                                 rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
                                 rf'\s*$', value)
             if mt:
@@ -634,7 +642,7 @@ class BaseParser(ABC):
                 return ''
             name = str(cells[name_col] or '').strip()
             m = re.match(
-                rf'^({PT}|计划新开工|竣工投产或部分竣工投产)项目?\s*(?:\d+\s*(?:个|项))?$', BaseParser._unwrap_cat_bracket(name))
+                rf'^({PT}|计划新开工|竣工投产或部分竣工投产)(?:项目|类)?\s*(?:共|合计)?(?:\d+\s*(?:个|项))?$', BaseParser._unwrap_cat_bracket(name))
             if not m:
                 return ''
             word = m.group(1)
@@ -655,15 +663,18 @@ class BaseParser(ABC):
         - 其他短分类文本(≤12 字) → category(一级,重置栈)
         """
         value = value.strip()
-        if not value or value.isdigit() or len(value) == 1:
+        if not value or not BaseParser._has_chinese(value) or len(value) == 1:
             return False
         if 'category' in header_map.values():
             return False
         # 【】强调包装去壳(如 "【预备】(1个)" 等同 "预备(1个)",贵阳 2026)
         value = BaseParser._unwrap_cat_bracket(value)
 
+        if re.fullmatch(r'\d{4}年',value):
+            return True
+
         # 建设性质: "续建项目(597个)" / "计划开工项目(318个)"
-        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目|类)?\s*(?:共|合计|：|:)?\s*'
                                 rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
                                 rf'\s*$', value)
         if m_pt:
@@ -720,6 +731,8 @@ class BaseParser(ABC):
             cat = re.sub(r'[（(]\s*共?\s*\d+\s*(?:个|项)[)）].*$', '', m3.group(1)).strip()
             cat = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', cat).strip()  # 去行尾数字量词
             if cat and (len(cat) <= 12 or BaseParser._looks_like_category(cat) or re.search(r'\d+\s*(?:个|项|件)\s*[)）]?$',  value)):
+                if cat.endswith('；'): # 分号结尾
+                    return False
                 BaseParser._apply_category_level(context, 3, cat)
                 return True
 
@@ -1047,19 +1060,19 @@ class BaseParser(ABC):
                 or re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$', text)
                 # 行尾数字量词(如 "前期准备项目135个")
                 or re.search(r'\d+\s*(?:个|项|件)\s*$', text)
-                or re.match(rf'^(?P<pt>{PT})项目?$', text)):
+                or re.match(rf'^(?P<pt>{PT})(?:项目|类)?$', text)):
             # 补充词表全等分类行(人工维护的 CATEGORY_Supplement_WORDS,全等即分类):
             # 无 序号/括号/量词 等前缀也可放行——如 银川 "一产项目 4"(计数纯数字已
             # 随数字剔除 → "一产项目"),强/弱词仍需结构前缀防数据行误判(名称/建设内容
             # 可能包含 "交通/市政" 等词),补充词全等不存在该歧义
             if text in CATEGORY_Supplement_WORDS:
-                BaseParser._set_category(context, text)
+                BaseParser._apply_category_level(context, 1, text)
                 return True
             return False
 
         # 性质分组头 + 括号项数(如 "预备(1个)"、"【预备】(4)"、"一、在建（257个）",
         # 贵阳 2026 docx):只设 project_type、不产生项目;性质纯词不入 category
-        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+        m_pt = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目|类)?\s*(?:共|合计|：|:)?\s*'
                                 rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
                                 rf'\s*$', text)
         if m_pt:
@@ -1067,7 +1080,7 @@ class BaseParser(ABC):
             return True
 
         # 纯建设性质标题(如 "投产项目")→ 更新 project_type
-        m_type = re.match(rf'^(?P<pt>{PT})项目?$', text)
+        m_type = re.match(rf'^(?P<pt>{PT})(?:项目|类)?$', text)
         if m_type:
             word = m_type.group('pt')
             context['project_type'] = '竣工投产' if word == '竣工投产' else word
@@ -1079,7 +1092,7 @@ class BaseParser(ABC):
             category = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项|个)[^）)]*[)）].*$', '', m1.group(1)).strip()
             # 概况统计说明截断:分类行名称列可能带 "项目59个。其中,市住建委14个…" 说明文字
             category = re.split(r'[。；;]|其中', category, maxsplit=1)[0].strip()
-            category = re.sub(r'\s+(?:项目|项)?\s*\d+\s*(?:个|项|件).*$', '', category).strip()
+            category = BaseParser._clean_category_name(category)
             BaseParser._apply_category_level(context, 1, category)
             BaseParser._record_declared(text, context)
             return True
@@ -1187,13 +1200,15 @@ class BaseParser(ABC):
             if re.match(r'^(总\s*计|合\s*计|小\s*计)', cat):
                 return True  # 汇总行,跳过不产生项目、不设分类
             if cat and len(cat) <= 16 and BaseParser._looks_like_category(cat):
-                BaseParser._set_category(context, cat)
+                BaseParser._apply_category_level(context, 1, cat)
                 return True
             return False
 
         # 兜底:序号+分类标题(如 "42 光伏发电项目（16项）",序号列有值)→ 去序号去项数
         cleaned = re.sub(r'^\s*\d+\s*', '', text)
-        cleaned = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项(?!目)|个)[^）)]*[)）].*$', '', cleaned).strip()
+        cleaned = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项(?!目)|个)'
+                                r'(?![^）)]*(?:子项))'         # 预留 
+                                r'[^）)]*[)）].*$', '', cleaned).strip()
         # 排除 汇总行("总计/合计/小计")
         # 护栏:长度上限 + 句子标点限定——兜底放行后 cleaned 实为 名称+建设内容
         # 拼接的业务数据行(温州 882 "878 科技创新强基领域 全省海上风电…（5个桩基
@@ -1202,9 +1217,10 @@ class BaseParser(ABC):
         if cleaned and cleaned != text.strip() \
                 and not re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned) \
                 and len(cleaned) <= FALLBACK_CATEGORY_MAX_LEN \
-                and not FALLBACK_CATEGORY_PUNCT_RE.search(cleaned):
+                and not FALLBACK_CATEGORY_PUNCT_RE.search(cleaned) \
+                and BaseParser._looks_like_category(cleaned):
             BaseParser._record_declared(text, context)
-            BaseParser._set_category(context, cleaned)
+            BaseParser._apply_category_level(context, 1, cleaned)
             return True
         # 前置检查通过但未识别出分类特征(如 "(10)中车…\n、中宁县人民政府" 数据行)→ 非分类行
         return False
@@ -1219,13 +1235,13 @@ class BaseParser(ABC):
         '''
         # 行尾数字量词(如 "前期准备项目135个"):性质词开头 → project_type;其他 → 分类
         cleaned = re.sub(r'\d+\s*(?:个|项|件)\s*$', '', text).strip()
-        m_typ = re.match(rf'^(?P<pt>{PT})\S*项目?$', cleaned)
+        m_typ = re.match(rf'^(?P<pt>{PT})\S*(?:项目|类)?$', cleaned)
         if m_typ:
             context['project_type'] = m_typ.group('pt')
-        elif re.match(r'^[^\n]{0,10}?项目\s*(?:总\s*计|合\s*计|小\s*计)', cleaned):
+        elif re.match(r'^[^\n]{0,10}?(?:项目\s*)?(?:总\s*计|合\s*计|小\s*计)', cleaned):
             return True  # 汇总行,跳过不产生项目、不设分类
         elif cleaned and len(cleaned) <= 16 and BaseParser._looks_like_category(cleaned):
-            BaseParser._set_category(context, cleaned)
+            BaseParser._apply_category_level(context, 1, cleaned)
             return True  # 跳过不产生项目
         return False
 
@@ -1253,7 +1269,7 @@ class BaseParser(ABC):
         name = re.sub(r'^[、,，.\s]+', '', name)
         name = re.sub(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?[^）)]*[)）].*$', '', name)
         # 无括号项数("项目45个" 的 "45个"/"项目2件")→ 去
-        name = re.sub(r'\d+\s*(?:项|个|件)(?=\s|$)', '', name)
+        name = re.sub(r'共?\d+\s*(?:项|个|件)(?=\s|$)', '', name)
         # "项目数 426 个"(浙江 千项万亿 分类行统计列)→ 剥离
         name = re.sub(r'项目数\s*[\d,，.．]*\s*(?:个|项|件)?', '', name)
         # "——" 占位归一为空格(后续金额截断可识别行尾数字)
@@ -1287,7 +1303,7 @@ class BaseParser(ABC):
             return
         if re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned):
             return  # 汇总词("合计/总计/小计")不做分类上下文
-        m_mix = re.match(rf'^(?P<pt>{PT})(?:项目)?\s*[-－\s]', cleaned)
+        m_mix = re.match(rf'^(?P<pt>{PT})(?:项目|类)?\s*[-－\s]', cleaned)
         if m_mix:
             context['project_type'] = m_mix.group('pt')
             return
@@ -1308,19 +1324,30 @@ class BaseParser(ABC):
         - 只保留 level<=2 的部分（即 "——/三级/罗马"
           的父级），不再单独维护，避免被深层污染。
         """
-        if not title:
-            return
         title = title.strip()
         if not title:
             return
-
+        cleaned = BaseParser._clean_category_name(title)
+        if BaseParser._filter_seconde_name(cleaned):
+            return
+        if not cleaned or '明细' in cleaned:
+            return
+        if re.fullmatch(r'\d+', cleaned):
+            return
+        if re.match(r'^(总\s*计|合\s*计|小\s*计)', cleaned):
+            return  # 汇总词("合计/总计/小计")不做分类上下文
+        m_mix = re.match(rf'^(?P<pt>{PT})(?:项目|类)?\s*[-－\s]', cleaned)
+        if m_mix:
+            context['project_type'] = m_mix.group('pt')
+            return
         level = max(int(level), 1)
         stack = context.setdefault('_level_stack', {})
 
         # 清掉当前层级及更深的旧标题（同级替换、深层失效）
         for k in [k for k in stack if k >= level]:
             del stack[k]
-        stack[level] = title
+        cleaned = BaseParser._clean_category_name(cleaned)
+        stack[level] = cleaned
 
         # 拼接
         parts = [stack[k] for k in sorted(stack)]
@@ -1339,7 +1366,7 @@ class BaseParser(ABC):
         """
         # 先去除数字(分类标题可能同行带金额,如 "房地产 123 456")
         cleaned = re.sub(r'\s+\d+(?:[，,.]\d+)*', '', sub)
-        if re.search('浙|杭|温州|打包', cleaned):
+        if re.search('浙|杭|温州|打包|微丸|天宇科技|天津|谷|体育馆|合计', cleaned.replace(' ','')):
             return False
         # 项数特征:尾部括号数字("（16项）"/"（172个）"/"（10）" 纯数字,如 "实验室体系建设（10）")
         if re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$', sub):
@@ -1452,7 +1479,7 @@ class BaseParser(ABC):
                 continue
             # 性质分组头独立行(如 "续建项目："/"预备项目:" 后接该类项目条目,
             # docx 段落式清单常见,如 甘肃 "续建项目：")→ 更新 project_type 上下文
-            m_grp = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目)?'
+            m_grp = re.match(rf'^[\d一二三四五六七八九十]*[、.．\s]*(?P<pt>{PT})(?:项目|类)?\s*(?:共|合计|：|:)?\s*'
                      rf'(?:\s*[（(]\s*\d+\s*(?:个|项|件)?\s*[)）]|\s*\d+\s*(?:个|项|件)?)?'
                      rf'\s*$', BaseParser._unwrap_cat_bracket(text))
             if m_grp:
@@ -1805,6 +1832,10 @@ class BaseParser(ABC):
         return bool(re.fullmatch(r'[—－\s-]+', str(s or '').strip()))
 
     @staticmethod
+    def _has_chinese(s: str) -> bool:
+        return bool(re.search(r'[\u4e00-\u9fff]', s))
+
+    @staticmethod
     def is_business_data_row(cells: List[Any], header_map: Dict[int, str]) -> bool:
         """业务数据行检测(header_map 列语义):业务字段列含非纯数字文本 → 数据行。
 
@@ -1848,6 +1879,13 @@ class BaseParser(ABC):
         :return 需要过滤 True
         '''
         return bool(re.fullmatch(rf'.?(?:{CL}|附件\d|项目数\s*\d+\s*个).?', s))
+
+    @staticmethod
+    def _is_seconde_name(s):
+        ''' 2024年合川区重大建设项目名单.xlsx
+        :return 需要过滤 True
+        '''
+        return bool(re.fullmatch(rf'.?(?:{CL})', s))
 
     # ========================
     # xlsx、xls 提取的公共方法
@@ -1946,4 +1984,63 @@ class BaseParser(ABC):
             v = str(cells[col] or '').strip()
             if v and not self._is_number(v) and not self._is_placeholder(v):
                 return True
+        return False
+
+    @staticmethod
+    def is_continuation(prev: str, cur: str) -> bool:
+        """
+        判断 cur 是否为 prev 的续行（同一行数据被换行截断）。
+        规则：
+          - prev：恰好 1 个左括号（（ 或 (），且 0 个右括号（） 或 )）
+          - cur ：恰好 1 个右括号（） 或 )），且 0 个左括号（（ 或 (）
+        >>> is_continuation('沁河带状公园（两', '河交汇口-陵西桥）绿化景观提升')
+        True
+        """
+        if not isinstance(prev, str) or not isinstance(cur, str):
+            return False
+
+        p_left, p_right = len(_LEFT.findall(prev)), len(_RIGHT.findall(prev))
+        c_left, c_right = len(_LEFT.findall(cur)), len(_RIGHT.findall(cur))
+        p_diff = p_left - p_right
+        c_diff = c_right - c_left
+        return p_diff == 1 and c_diff == 1
+
+    @staticmethod
+    def _check_sortNum(cells:list,header_map:dict):
+        """
+        对单行数据，判断是否是序号\\d 开始的列数据
+        :param cells:
+        :param header_map:
+        :return:
+        """
+        sortNum = None
+        if 'sortNum' in header_map.values():
+            sortNum = cells[[k for k,v in header_map.items() if v == 'sortNum'][0]]
+        else:
+            sortNum_re = re.match(r'^[\d]+[、.．]\s*(.+)$', ' '.join(map(str, cells)))
+            if sortNum_re:
+                sortNum = sortNum_re.group(1)
+        if sortNum and BaseParser._is_serial_no(sortNum):
+            return True
+        return False
+
+    @staticmethod
+    def _is_serial_no(x) -> bool:
+        """判断 x 是否可作为序号（值为整数，含 3、4.0、'4'、'4.0'）。"""
+        # int 直接通过
+        if isinstance(x, int):
+            return True
+        # float：值为整数才算（4.0 ✅，3.4 ❌）
+        if isinstance(x, float):
+            return x.is_integer()
+        # str：用 Decimal 精确判断，避免 float 精度问题
+        if isinstance(x, str):
+            s = x.strip()
+            if not s:
+                return False
+            try:
+                d = Decimal(s)
+            except InvalidOperation:
+                return False
+            return d == d.to_integral_value()
         return False
