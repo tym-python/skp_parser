@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-
+import io
 import openpyxl
 
 from parser.base_parser import BaseParser
@@ -41,7 +41,9 @@ class XlsxParser(BaseParser):
                 f"跳过解析(建议人工拆分/优化后重跑)")
             return []
         self.file_year = extract_file_year(file_path)
-        workbook = openpyxl.load_workbook(file_path, data_only=True, read_only=False)
+        with open(file_path, 'rb') as f:
+            file_content = f.read()
+        workbook = openpyxl.load_workbook(io.BytesIO(file_content), data_only=True, read_only=False)
         try:
             projects: List[Dict[str, Any]] = []
             for sheet in workbook.worksheets:
@@ -115,7 +117,6 @@ class XlsxParser(BaseParser):
         all_rows = [list(r) for r in sheet.iter_rows(max_col=valid_len if valid_len>0 else 50, values_only=True)]
         # 统计普遍有效数据项，1. 不过滤小于最大有效项的数据行，2. 有效项/普遍有效项<0.2，为分类行。（暂定）
         max_project_num = len(all_rows)
-        normal_cols = BaseParser._normal_cols(all_rows, header_map)
         # project_name 候选列:修正前后的原始列 + 数据行合并单元格覆盖的相邻列——
         # 数据行名称可能落在任一列(合并单元格只首格有值,如 芜湖 B:C 合并名称在左格、
         # 宁夏 表头修正后主列反而为空),主列取空时回退候选列
@@ -182,6 +183,10 @@ class XlsxParser(BaseParser):
                     break
             minimal_numbered = numbered_cnt
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
+        if 'project_name' not in header_map.values():
+            logger.info('未匹配到有效header_map')
+            return [], None
+        normal_cols = BaseParser._normal_cols(all_rows[header_idx + 1:], header_map)
         # 金额单位
         investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx],headers,header_map)
         for i, row in enumerate(all_rows[header_idx + 1:], start=header_idx + 1):
@@ -276,6 +281,15 @@ class XlsxParser(BaseParser):
             # 由 header_map 的列语义识别数据行,避免兜底误判为分类
             # (与上方 group 检测共用同一先排除业务数据行的判定)
             suspect_row = not is_biz_row
+            # 词表外分类行宽松标志:文件级(数据行 ≥80% 有业务文本 + 潜在分类行
+            # 多数无统计暗示)+ 行级无业务文本 → m2/m3/单格行 词表失败时放宽判分类
+            valid_num = len([
+                cells[i] for i in header_map
+                if cells[i] is not None
+                   and str(cells[i]).strip()
+                   and not self._is_number(cells[i])
+                   and not self._is_placeholder(cells[i])
+            ])
             if suspect_row:
                 # 清单概况/统计说明行(文本级统一判定 _is_overview_sentence,如 奉节
                 # row7 "2023年续建项目共85个,总投资338…"、重庆/各区 "重大前期项目
@@ -286,15 +300,6 @@ class XlsxParser(BaseParser):
                         " ".join(str(c).strip() for c in cells
                                  if c is not None and str(c).strip())):
                     continue
-                # 词表外分类行宽松标志:文件级(数据行 ≥80% 有业务文本 + 潜在分类行
-                # 多数无统计暗示)+ 行级无业务文本 → m2/m3/单格行 词表失败时放宽判分类
-                valid_num = len([
-                    cells[i] for i in header_map
-                    if cells[i] is not None
-                       and str(cells[i]).strip()
-                       and not self._is_number(cells[i])
-                       and not self._is_placeholder(cells[i])
-                ])
                 # print(f'匹配后有效数据：{valid_num}个，有效比例：{round(valid_num/normal_cols*100, 2)}%')
                 relax_ok = full_field_sheet and plain_category_file \
                     and not self._has_biz_text(cells, header_map)
@@ -302,10 +307,11 @@ class XlsxParser(BaseParser):
                     context['_relax'] = True
                 # 单格分类行(分类独立一行,如 "1、合肥市(915个)"、"续建项目(597个)")→ 分类上下文
                 if len(non_empty) == 1 and len(header_map) > 1:
-                    if self.classify_single_row(non_empty[0], context, header_map):
-                        if relax_ok:
-                            context.pop('_relax', None)
-                        continue
+                    if not normal_cols == 1 or not BaseParser._check_sortNum(cells, header_map):
+                        if self.classify_single_row(non_empty[0], context, header_map):
+                            if relax_ok:
+                                context.pop('_relax', None)
+                            continue
                 joined = " ".join(non_empty)
                 # 行尾括号整数统计格式(如 "城镇（含园区）基础设施类（52）"/"合计(2617)"):
                 # 有效数据项少于 normal_cols 才记入分类;数据行(有效项 ≥ normal_cols,
@@ -337,6 +343,15 @@ class XlsxParser(BaseParser):
             name = project.get('project_name')
             if not name:
                 continue
+            if valid_num / normal_cols <= 0.7 and projects:
+                last = projects[-1]
+                if i+1 in range(last['source_row']+1,last['source_row']+2) and (
+                        re.search('^[(（][^()（）]*?[)）]$', name)
+                        or BaseParser.is_continuation(last['project_name'],name)
+                        or BaseParser._is_seconde_name(name)
+                ):
+                    last['project_name'] = fr"{last['project_name']} \n {name}".strip()[:255]
+                    continue
             # 疑似分类/分组行:该文件数据行普遍有业务文本(full_field_sheet),而本行
             # 六字段(含建设内容)全空,分类判断也未识别 → 成项目大概率是漏网的
             # 分类/单位行(如 责任单位 "自治区消防救援总队")→ 备注标记供人工核查。
