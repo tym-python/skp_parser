@@ -343,9 +343,9 @@ class XlsxParser(BaseParser):
             name = project.get('project_name')
             if not name:
                 continue
-            if valid_num / normal_cols <= 0.7 and projects:
+            if valid_num / normal_cols <= 0.8 and projects:
                 last = projects[-1]
-                if i+1 in range(last['source_row']+1,last['source_row']+2) and (
+                if i+1 in range(last['source_row']+1,last['source_row']+3) and (
                         re.search('^[(（][^()（）]*?[)）]$', name)
                         or BaseParser.is_continuation(last['project_name'],name)
                         or BaseParser._is_seconde_name(name)

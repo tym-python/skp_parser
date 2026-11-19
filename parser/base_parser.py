@@ -18,7 +18,7 @@ CATEGORY_STRONG_WORDS = (
     '基础设施', '基础产业', '重大产业', '产业发展', '产业工程', '产业转型',
     '制造业', '服务业', '现代服务', '交通基础设施', '民生', '社会事业', '社会民生',
     '市政基础设施', '城建', '战略性新兴', '传统产业','市政设施安全改造','市政府','市政设施',
-    '市政道路','交通类','一体化交通枢纽','综合交通枢纽','交通运输'
+    '市政道路','交通类','一体化交通枢纽','综合交通枢纽','交通运输','农业、旅游商贸'
 )
 CATEGORY_WEAK_WORDS = (
     # 弱词命中且文本 ≤6 字才判为分类。
@@ -35,16 +35,20 @@ CATEGORY_WEAK_WORDS = (
     '城市建设','城市道路','国省','航空', '体系', '油气开发','风力发电','其他工业产业',
     '实施项目','产业项目','农业水利','生态环保','交通物流','文化旅游','市政','交通',
 )
+CATEGORY_WEAK_WORDS_3words = (
+    '小学','种植','养殖','钢铁','金融','商贸'
+)
 CATEGORY_Supplement_WORDS = (
     # 部分被识别成项目的分类，全等
     '林业', '城市更新改造（棚户区改造）', '城市轨道交通（含地铁、轻轨、市郊铁路等）', '数字化（大数据、信息化建设等）', '城镇基础设施（含新型城镇化建设）',
     '新型基础设施（含信息、融合、创新基础设施等）', '教育、文化、体育及社会服务', '生态修复、环境整治（含流域治理）','种植业','草产业','城镇污水垃圾处理',
     '港口、码头、航运及航电枢纽','综合交通枢纽及一体化设施项目', '水资源保障建设项目', '高性能船舶与海洋工程装备项目','普及高水平公共教育建设项目',
     '一产项目','二产项目','三产项目','研发平台','科创园区','乡村振兴','安置房项目','产业转型升级及科技创新项目','城市基础设施项目','热带高效农业产业',
-    '新型城镇化项目','保障性安居工程','房地产开发项目','生态治理与环境提升类','热带高效农业产业','交通绿色智能建造','综合交通枢纽及停车场',
+    '新型城镇化项目','保障性安居工程','房地产开发项目','生态治理与环境提升类','热带高效农业产业','交通绿色智能建造','综合交通枢纽及停车场','地下管廊','配套设施',
+    '标准厂房','机械制造',
 )
 PROJECT_TYPE_WORDS = (
-    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进', '计划新开工','计划建成','前期准备'
+    '竣工投产', '新开工', '新建', '续建', '在建', '投产', '预备', '储备', '前期', '收尾', '竣工', '计划开工','推进', '计划新开工','计划建成','前期准备','开工'
 )
 PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 
@@ -595,6 +599,7 @@ class BaseParser(ABC):
         """统计 sheet 普遍数据行的非空且非数字列数(众数),作为分组行判定的列数基准。"""
         from collections import Counter
         counts = Counter()
+        pname_col = next((c for c, f in header_map.items() if f == 'project_name'), None)
         for cells in rows:
             n = len([cells[i] for i in header_map
                      if cells[i] is not None
@@ -602,7 +607,7 @@ class BaseParser(ABC):
                      and not BaseParser._is_number(cells[i])
                      and not BaseParser._is_placeholder(cells[i])])
             # if n >= 2:
-            if BaseParser.is_data_row(cells) and n >= 1:
+            if BaseParser.is_data_row(cells) and pname_col and cells[pname_col]:
                 counts[n] += 1
         if not counts:
             return 3
@@ -1366,7 +1371,7 @@ class BaseParser(ABC):
         """
         # 先去除数字(分类标题可能同行带金额,如 "房地产 123 456")
         cleaned = re.sub(r'\s+\d+(?:[，,.]\d+)*', '', sub)
-        if re.search('浙|杭|温州|打包|微丸|天宇科技|天津|谷|体育馆|合计', cleaned.replace(' ','')):
+        if re.search('浙|杭|温州|打包|微丸|天宇科技|天津|谷|体育馆|合计|★|重庆', cleaned.replace(' ','')):
             return False
         # 项数特征:尾部括号数字("（16项）"/"（172个）"/"（10）" 纯数字,如 "实验室体系建设（10）")
         if re.search(r'[（(]\s*共?\s*\d+\s*(?:项|个|件)?\s*[)）]\s*$', sub):
@@ -1379,6 +1384,8 @@ class BaseParser(ABC):
         if len(cleaned) <= 10 and any(kw in cleaned for kw in ('交通枢纽','轨道交通')):
             return True
         if len(cleaned) <= 6 and any(kw in cleaned for kw in CATEGORY_WEAK_WORDS):
+            return True
+        if len(cleaned) <= 3 and any(kw in cleaned for kw in CATEGORY_WEAK_WORDS_3words):
             return True
         if cleaned in CATEGORY_Supplement_WORDS:
             return True

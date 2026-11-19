@@ -28,7 +28,7 @@ from util.filter_utils import match_any
 
 logger = get_logger(__file__)
 
-SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', '.png', '.jpg', '.jpeg'}
+SUPPORTED_EXT = {'.pdf', '.docx', '.xlsx', '.xls', '.png', '.jpg', '.jpeg'}
 
 # 省份关键词 → area_id(与 util/area_id.py 对应,长词优先匹配)
 PROVINCE_KEYWORDS: Dict[str, int] = {
