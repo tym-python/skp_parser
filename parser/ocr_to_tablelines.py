@@ -26,6 +26,7 @@ import cv2
 import numpy as np
 import regex
 from scipy.stats import trim_mean
+from parser.base_parser import BaseParser,TITLE_KEYWORDS
 
 _rapid_engine = None
 
@@ -36,11 +37,6 @@ _ALNUM_RE = re.compile(r'[0-9A-Za-z]')
 # 特殊字符（排除汉字、数字、标点、符号、空白）
 _SPEC_RE = regex.compile(r'(?![a-zA-Z])[^\p{Han}\p{Nd}\p{P}\p{S}\s]')
 
-# 标题关键字：命中即判为标题
-TITLE_KEYWORDS = (
-    '项目清单', '清单汇总', '项目分布', '项目计划表', '项目计划', '项目投资计划', '投资项目计划',
-    '项目表', '项目一览', '项目汇总', '项目名单', '项目月报表', '项目建设计划', '投资计划表'
-)
 # 金额单位行正则，如"金额单位：万元"、"单位：亿元"
 UNIT_LINE_RE = re.compile(r'(?:金额)?单位\s*[:：]\s*[万亿]元')
 
@@ -239,6 +235,7 @@ def _remove_title_and_unit_rows(
         items: List[Dict],
         avg_h: float,
         img_width: int,
+        investment_unit: dict,
 ) -> List[Dict]:
     """从 items 顶部剔除标题行和金额单位行。
 
@@ -249,6 +246,7 @@ def _remove_title_and_unit_rows(
 
     phys_rows = _split_physical_rows(items, avg_h)
     title_n, HEADER_UNIT_itme = _detect_title_rows(phys_rows, avg_h, img_width)
+    BaseParser._get_investment_unit(header_up_row=HEADER_UNIT_itme,investmen_unit_dict=investment_unit)
     if title_n <= 0:
         return items
 
@@ -958,6 +956,7 @@ def _build_columns_from_vertical_lines(
         img_width: int,
         header_items: Optional[List[Dict]] = None,
         avg_h: float = 20.0,
+        min_x0: float = 0,
 ) -> List[Dict]:
     """用竖线硬边界构造列定义。
 
@@ -974,9 +973,12 @@ def _build_columns_from_vertical_lines(
     min_gap = avg_h * 0.5
 
     # 补左边界：竖线左侧有表头内容
-    if lines[0] > min_gap and header_items:
-        if any(it['xc'] < lines[0] for it in header_items):
-            lines = [0.0] + lines
+    if lines[0] > min_gap:
+        if header_items:
+            if any(it['xc'] < lines[0] for it in header_items):
+                lines = [0.0] + lines
+        if lines[0]>min_x0 and (lines[0]-min_x0)>min_gap:
+            lines = [min_x0] + lines
 
     # 补右边界：竖线右侧有表头内容
     if img_width - lines[-1] > min_gap and header_items:
@@ -1213,6 +1215,7 @@ def reconstruct_table_by_header(
         items: List[Dict],
         img: np.ndarray = None,
         isshowLines = False,
+        investment_unit:dict={},
 ) -> Tuple[Any, str]:
     """按表头定列重建表格。
 
@@ -1229,7 +1232,7 @@ def reconstruct_table_by_header(
     # 步骤 0：清除标题行 / 金额单位行（前置，对所有方案统一）
     # ------------------------------------------------------------
     avg_h = sum(it['h'] for it in items) / len(items)
-    items = _remove_title_and_unit_rows(items, avg_h, img_width)
+    items = _remove_title_and_unit_rows(items, avg_h, img_width,investment_unit)
     if not items:
         return [], 'lines'
     # 清除标题后重算 avg_h（排除大字标题干扰）
@@ -1729,12 +1732,13 @@ def _fallback_paragraph(
 
     # ---------- 模式 B：有竖线无横线 ----------
     if has_v and not has_h:
-
+        min_x0 = min(it['x0'] for it in items)
         col_defs = _build_columns_from_vertical_lines(
             vertical_lines,
             img_width=10 ** 9,  # 大值，不触发补左右边界
             header_items=None,
             avg_h=avg_h,
+            min_x0=min_x0,
         )
         if not col_defs or len(col_defs) < 2:
             # 竖线不够用 → 退回纯 y 聚类
@@ -1784,7 +1788,7 @@ def _fallback_paragraph(
 # ------------------------------------------------------------
 # 15. 统一入口
 # ------------------------------------------------------------
-def ocr_image_bytes(data: bytes, isshowLines:bool=False) -> Tuple[Any, Optional[str]]:
+def ocr_image_bytes(data: bytes, isshowLines:bool=False, investment_unit:Dict={}) -> Tuple[Any, Optional[str]]:
     """图片字节 → (result, mode)。
 
     返回：
@@ -1810,7 +1814,7 @@ def ocr_image_bytes(data: bytes, isshowLines:bool=False) -> Tuple[Any, Optional[
             print(f'OCR 结果疑似乱码（items={len(items)}, 乱码分={score:.2f}），跳过解析')
             return [], None
 
-        res_list, parse_type = reconstruct_table_by_header(items, img=img, isshowLines=isshowLines)
+        res_list, parse_type = reconstruct_table_by_header(items, img=img, isshowLines=isshowLines,investment_unit=investment_unit)
 
         return res_list, parse_type
 
@@ -1963,7 +1967,7 @@ if __name__ == "__main__":
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\31浙江省2024年重点项目清单\ilovepdf_pages-to-jpg\附件：浙江省扩大有效投资“千项万亿”工程2024年重大建设项目实施计划项目表_page-0014.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2025年重点项目\04重庆市2025年重点项目清单\彭水自治县2025年\14.jpg'
         full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\15海南省2023年重点项目清单\预备.png'
-        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\22江苏省2024年重点项目清单\徐州市2024年\徐州市2024年.6.png'
+        full_path = r'E:\STangWork\STangFiles\各省重点项目：2020年起\测试.png'
         # t = r'''E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年十堰市\十堰市2023年省级重点项目清单1.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2023年重点项目\19湖北省2023年重点项目清单\2023年荆州市\荆州市2023年省级重点项目清单.png
         # # E:\STangWork\STangFiles\各省重点项目：2020年起\2024年重点项目\02上海市2024年重点项目清单\金山区2024年\金山2024年重大工程（新开）一览表.png

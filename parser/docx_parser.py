@@ -151,6 +151,7 @@ class DocxParser(BaseParser):
                 has_table = True
                 rows, grid = payload  # with_grid:附各逻辑格 (offset, span) 网格坐标
                 rows = [self._clean_row(row) for row in rows]
+                investment_unit = BaseParser._get_investment_unit(last_paras)
                 if self._is_profile_table(rows):
                     # 单项目纵排卡片表(每表一个项目):不转置会把标签列当项目名逐行
                     # 产垃圾。并续行 → 转置为 序号/标签/值 三行横表,标签行自动被
@@ -179,14 +180,19 @@ class DocxParser(BaseParser):
                     prev_header = None
                     profile_count += 1
                 else:
+                    # 新附件,context不延用
+                    for i in last_paras:
+                        if re.fullmatch(r'附件\d+', i):
+                            print(f'刷新context:{context}')
+                            context: Dict[str, str] = {}
                     page_projects, prev_header = self.extract_rows_from_table(
                         (rows, grid), context, file_year=self.file_year,
-                        prev_header_map=prev_header, project_list_title=project_list_title)
+                        prev_header_map=prev_header, project_list_title=project_list_title,investment_unit=investment_unit)
                     projects.extend(page_projects)
             else:
                 text = clean_text(payload)
                 if text:
-                    # 最近段落环形缓冲(始终更新):卡片表缺项目名时回溯取名
+                    # 最近段落环形缓冲(始终更新):卡片表缺项目名时回溯取名:最新四条段落文本
                     last_paras.append(payload)
                     if len(last_paras) > 4:
                         last_paras.pop(0)
@@ -204,6 +210,7 @@ class DocxParser(BaseParser):
             if profile_count:
                 logger.info(f"{file_path}: 单项目卡片表 {profile_count} 张")
         else:
+            investment_unit = {'INVESTMENT_UNIT': ''}
             # 无表格:先纯文本清单兜底(bare:段落式逐行项目条目,如 甘肃 名单
             # "续建项目：…（一）农业水利项目 → 项目名" 逐行)
             if paragraph_lines:
@@ -214,11 +221,11 @@ class DocxParser(BaseParser):
             if not projects:
                 from parser.ocr_parser import docx_image_blocks, ocr_image_bytes
                 for img in docx_image_blocks(file_path):
-                    ocr_lines,_ = ocr_image_bytes(img)
+                    ocr_lines,_ = ocr_image_bytes(img,investment_unit=investment_unit)
                     if ocr_lines and _ == 'lines':
                         projects.extend(self.parse_lines(ocr_lines, context, fileType='docx-ocr'))
                     elif ocr_lines and _ == 'table':
-                        projects.extend(self.extract_rows_from_table(ocr_lines, context)[0])
+                        projects.extend(self.extract_rows_from_table(ocr_lines, context,investment_unit=investment_unit)[0])
                 if projects:
                     logger.info(f"{file_path}: 纯图片 docx,OCR 解析 {len(projects)} 条")
                 else:

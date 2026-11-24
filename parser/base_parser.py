@@ -56,7 +56,11 @@ PT = "|".join(map(re.escape, PROJECT_TYPE_WORDS))
 CONTINUATION_LINE_WORDS = ('大道', '项目', '工程', '生产', '建设', '设备', '改造', '租赁', '程', '分序号', '总序号','目','县）','段）','基','(二期)','段）工程','(一期)','设项目','提升改造','改造项目','扩建','迁建','中心','变电','增容','提升','系统','加工')
 CL = "|".join(map(re.escape, CONTINUATION_LINE_WORDS))
 
-from parser.ocr_to_tablelines import TITLE_KEYWORDS
+# 标题关键字：命中即判为标题
+TITLE_KEYWORDS = (
+    '项目清单', '清单汇总', '项目分布', '项目计划表', '项目计划', '项目投资计划', '投资项目计划',
+    '项目表', '项目一览', '项目汇总', '项目名单', '项目月报表', '项目建设计划', '投资计划表'
+)
 TITLE_PATTERN = '|'.join(map(re.escape, TITLE_KEYWORDS))
 
 # 兜底分支(序号+分类标题)护栏参数:update_category_context 的兜底把"去序号、
@@ -1431,7 +1435,9 @@ class BaseParser(ABC):
         return any(c is not None and str(c).strip() for c in cells)
 
     def parse_lines(self, lines: List[str], context: Optional[Dict[str, str]] = None,
-                    bare: bool = False, fileType: str = '') -> List[Dict[str, Any]]:
+                    bare: bool = False, fileType: str = '',
+                    investment_unit:Dict[Any, str] = {}
+                    ) -> List[Dict[str, Any]]:
         """行级兜底解析:从纯文本行中抽取项目信息。
         fileType : ocr,docx-ocr,docx
         分类不接二级分类：ocr
@@ -1584,12 +1590,18 @@ class BaseParser(ABC):
                     continue
             # 无序号行:抽取投资/年份补充到当前项目,或拼接项目名续行
             if projects:
-                if re.findall('项目|项日|项曰|页目|顶日|顶目',projects[-1]['project_name'],re.DOTALL):
-                    project = self._new_project(text, text, context, fileType)
+                project = self._new_project(text, text, context, fileType)
+                name = project.get('project_name','')
+                if not name:
+                    continue
+                last = projects[-1]
+                if re.findall('项目|项日|项曰|页目|顶日|顶目',last['project_name'],re.DOTALL) and not (
+                        re.search('^[(（][^()（）]*?[)）]$', name)
+                        or BaseParser.is_continuation(last['project_name'], name)
+                ):
                     project['source_row'] = line_idx  # 文本行号(1-based)
                     projects.append(project)
                     continue
-                last = projects[-1]
                 investment = clean_amount(text, require_unit=True)
                 if investment:
                     last['total_investment'] = investment
@@ -1792,10 +1804,12 @@ class BaseParser(ABC):
         return projects, header_map
 
     @staticmethod
-    def flatten(temp):
-        for x in temp:
+    def flatten_reverse(temp):
+        # 从后往前遍历
+        for x in reversed(temp):
             if isinstance(x, (list, tuple)):
-                yield from x
+                # 如果子元素还是列表/元组，递归倒序展平
+                yield from BaseParser.flatten_reverse(x)
             else:
                 yield x
 
@@ -1810,7 +1824,7 @@ class BaseParser(ABC):
         '''
         if not investmen_unit_dict:
             investmen_unit_dict = {'INVESTMENT_UNIT': ''}
-        for cell in BaseParser.flatten(header_up_row):
+        for cell in BaseParser.flatten_reverse(header_up_row):
             if cell and (m := INVESTMENT_UNIT_RE.search(str(cell).strip())):
                 investmen_unit_dict['INVESTMENT_UNIT'] = m.group(1)
                 break
