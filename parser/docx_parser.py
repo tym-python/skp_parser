@@ -220,8 +220,12 @@ class DocxParser(BaseParser):
             # 与单独图片文件共用 ocr_parser 逻辑;有产出的常规 docx 不触发
             if not projects:
                 from parser.ocr_parser import docx_image_blocks, ocr_image_bytes
+                count = 0
                 for img in docx_image_blocks(file_path):
+                    count += 1
                     ocr_lines,_ = ocr_image_bytes(img,investment_unit=investment_unit)
+                    # print(f'====第{count}张图片解析结果:{len(ocr_lines)}条数据,类型{_}====')
+                    # print(ocr_lines[:3])
                     if ocr_lines and _ == 'lines':
                         projects.extend(self.parse_lines(ocr_lines, context, fileType='docx-ocr'))
                     elif ocr_lines and _ == 'table':

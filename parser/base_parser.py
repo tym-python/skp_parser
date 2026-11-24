@@ -1613,6 +1613,7 @@ class BaseParser(ABC):
                 # 续行拼接:仅无空格且 ≥2 字的行(避免碎片叠加)
                 if not investment and ' ' not in text and len(text) >= 2:
                     last['project_name'] = f"{last['project_name']} {text}".strip()[:255]
+        # print(f'------解析出项目{len(projects)}条.---------')
         return  projects
 
     @staticmethod
@@ -1801,6 +1802,7 @@ class BaseParser(ABC):
             self._resolve_row_context(project, context,' '.join(map(str, cells)))
             project['source_row'] = row_i  # 表格内行号(表头后第 1 行 = 1)
             projects.append(project)
+        # print(f'------解析出项目{len(projects)}条.---------')
         return projects, header_map
 
     @staticmethod

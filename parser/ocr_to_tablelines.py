@@ -722,7 +722,14 @@ def _detect_header_by_lines(
     candidates = horizontal_lines[:4]
     best_bottom = None
 
-    for bottom in candidates[1:]:
+    # 最小y0距离
+    min_y0 = min(it['y0'] for it in items)
+    if min_y0+avg_h*4<candidates[0]:
+        bottom_start_index = 0
+    else:
+        bottom_start_index = 1
+
+    for bottom in candidates[bottom_start_index:]:
         # 按横线切分上下区域
         above = [it for it in items if (it['y0'] + it['y1']) / 2 < bottom]
         below = [it for it in items if (it['y0'] + it['y1']) / 2 >= bottom]
