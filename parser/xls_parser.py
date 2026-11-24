@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 import xlrd
 
 from parser.base_parser import BaseParser
-from parser.field_mapping import extract_file_year, map_row
+from parser.field_mapping import extract_file_year, map_row, process_total_investment_header
 from util.log_util import get_logger
 from util.noise_filter import is_noise_sheet, record_noise
 
@@ -151,6 +151,7 @@ class XlsParser(BaseParser):
         # 表头列错位修正:合并表头检查优先,数字列检测兜底
         header_map = BaseParser._fix_merged_header(header_map, sheet.merged_cells, header_idx)
         header_map = BaseParser._fix_numeric_project_col(header_map, all_rows, header_idx)
+        header_map = process_total_investment_header(header_map, headers)
         # 表头之前的行:分类标题计入上下文;装饰行(备注/正文标签/清单概况·总数
         # 描述,同 xlsx is_decor_text)→ 跳过且不设任何 category
         for row in header_rows[:header_idx]:

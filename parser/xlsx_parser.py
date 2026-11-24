@@ -8,7 +8,7 @@ import io
 import openpyxl
 
 from parser.base_parser import BaseParser
-from parser.field_mapping import extract_file_year, map_row
+from parser.field_mapping import extract_file_year, map_row, process_total_investment_header
 from util.log_util import get_logger
 from util.noise_filter import is_noise_sheet, record_noise
 logger = get_logger(__file__)
@@ -123,6 +123,7 @@ class XlsxParser(BaseParser):
         orig_pname = next((c for c, f in header_map.items() if f == 'project_name'), None)
         header_map = BaseParser._fix_merged_header(header_map, merged, header_idx)
         header_map = BaseParser._fix_numeric_project_col(header_map, all_rows, header_idx)
+        header_map = process_total_investment_header(header_map, headers)
         cur_pname = next((c for c, f in header_map.items() if f == 'project_name'), None)
         pname_candidates = sorted({c for c in (cur_pname, orig_pname) if c is not None})
         if cur_pname is not None and cur_pname >= 1 \

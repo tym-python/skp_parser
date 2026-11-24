@@ -140,6 +140,18 @@ def build_header_map(headers: List[Any]) -> Dict[int, str]:
             header_map[idx] = field
     return header_map
 
+def process_total_investment_header(header_map,headers):
+    for target_field in ['total_investment','annual_investment']:
+        matched_keys = {k for k, v in header_map.items() if v == target_field}
+        if len(matched_keys)<=1:
+            continue
+        target_idx_exist = any(re.search(r'小计|合计',headers[kidx]) for kidx in matched_keys)
+        if target_idx_exist:
+            for k in matched_keys:
+                if not re.search(r'小计|合计',headers[k]):
+                    # print(k,headers[k])
+                    del header_map[k]
+    return header_map
 
 def clean_amount(text: Any, require_unit: bool = False, unit_scale: str = '', textType: str='line') -> float:
     """把金额文本清洗为万元数值;无法解析返回 0.0。
