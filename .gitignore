@@ -3,3 +3,5 @@
 ./.claude
 *.doc
 *.docx
+*/output_lines.jpg
+*.xml
