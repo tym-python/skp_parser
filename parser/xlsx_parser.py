@@ -186,7 +186,7 @@ class XlsxParser(BaseParser):
         # header_idx 为 0-based,数据行从表头下一行(1-based header_idx + 2)开始
         if 'project_name' not in header_map.values():
             logger.info('未匹配到有效header_map')
-            return [], None
+            return []
         normal_cols = BaseParser._normal_cols(all_rows[header_idx + 1:], header_map)
         # 金额单位
         investment_unit = BaseParser._get_investment_unit(all_rows[:header_idx],headers,header_map)

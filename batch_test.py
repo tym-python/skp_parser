@@ -52,10 +52,10 @@ async def batch_test(file_type: str, sub_dir: str, upload: bool, dbkey:str='loca
                 file_hash = hashlib.sha256(bs).hexdigest()
                 # file_info = await db.get_file_by_hash(file_hash)
                 # if file_info:
-                #     print(file_info)
-                #     print('已存在',fp)
+                #     # print(file_info)
+                #     # print('已存在',fp)
                 #     file_id = file_info['id']
-                #     if file_id >15214 :
+                #     if file_id >=15972 :
                 #         continue
                 deleted = await db.delete_file_data(file_hash)
                 if any(deleted.values()):
